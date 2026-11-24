@@ -6,13 +6,17 @@ use App\Models\Expense;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
 
 class ExpenseController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        $request->validate(['month' => 'nullable|date_format:Y-m']);
+
         $expenses = $request->user()->expenses()
+            ->when($request->query('month'), fn ($query, $month) => $query->inMonth(Carbon::parse($month.'-01')))
             ->orderByDesc('date')
             ->orderByDesc('id')
             ->get();
@@ -52,6 +56,7 @@ class ExpenseController extends Controller
             'amount' => 'required|numeric|min:0',
             'category' => ['required', Rule::in(Expense::CATEGORIES)],
             'date' => 'required|date',
+            'note' => 'nullable|string|max:255',
         ]);
     }
 

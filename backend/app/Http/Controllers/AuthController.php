@@ -18,7 +18,8 @@ class AuthController extends Controller
             'password' => 'required|string|min:8|confirmed',
         ]);
 
-        $user = User::create($data);
+        // Reload so database defaults (e.g. monthly_budget = null) are in the response.
+        $user = User::create($data)->refresh();
         $token = $user->createToken('auth')->plainTextToken;
 
         return response()->json(['user' => $user, 'token' => $token], 201);
