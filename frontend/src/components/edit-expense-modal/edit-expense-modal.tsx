@@ -7,7 +7,6 @@ import {
   useVisibleTask$,
   type QRL,
 } from "@builder.io/qwik";
-import { ConfirmDelete } from "~/components/confirm-delete/confirm-delete";
 import { ExpenseFields } from "~/components/expense-fields/expense-fields";
 import { FieldError } from "~/components/field/field";
 import { api } from "~/lib/api";
@@ -17,7 +16,7 @@ type EditExpenseModalProps = {
   expense: Expense;
   onClose$: QRL<() => void>;
   onSaved$: QRL<(expense: Expense) => void>;
-  onDelete$: QRL<(id: number) => Promise<void>>;
+  onDelete$: QRL<(expense: Expense) => void>;
 };
 
 export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
@@ -98,8 +97,6 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
   const errors = useSignal<Record<string, string>>({});
   const message = useSignal("");
   const saving = useSignal(false);
-  const confirming = useSignal(false);
-  const deleting = useSignal(false);
 
   // On open: focus the first input. On close: give focus back to whatever opened the modal.
   // eslint-disable-next-line qwik/no-use-visible-task
@@ -130,11 +127,9 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
     await props.onSaved$(res.data);
   });
 
-  const confirmDelete = $(async () => {
-    deleting.value = true;
-    await props.onDelete$(props.expense.id);
-    // Close either way; if it failed, the page shows the error.
+  const remove = $(async () => {
     await props.onClose$();
+    await props.onDelete$(props.expense);
   });
 
   return (
@@ -177,38 +172,30 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
         </div>
 
         <form preventdefault:submit onSubmit$={save} noValidate>
-          <ExpenseFields idPrefix="edit" values={values} errors={errors.value} />
+          <ExpenseFields
+            idPrefix="edit"
+            values={values}
+            errors={errors.value}
+          />
           <FieldError id="edit-error" message={message.value} />
 
           <div class="footer">
-            {confirming.value ? (
-              <ConfirmDelete
-                busy={deleting.value}
-                onConfirm$={confirmDelete}
-                onCancel$={() => (confirming.value = false)}
-              />
-            ) : (
-              <button
-                type="button"
-                class="delete-btn"
-                onClick$={() => (confirming.value = true)}
+            <button type="button" class="delete-btn" onClick$={remove}>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
               >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
-                </svg>
-                Delete
-              </button>
-            )}
+                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+              </svg>
+              Delete
+            </button>
             <div class="footer-right">
               <button
                 type="button"

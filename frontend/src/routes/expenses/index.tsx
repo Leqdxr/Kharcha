@@ -10,7 +10,7 @@ import { AddExpenseForm } from "~/components/add-expense-form/add-expense-form";
 import { BudgetDialog } from "~/components/budget-dialog/budget-dialog";
 import { EditExpenseModal } from "~/components/edit-expense-modal/edit-expense-modal";
 import { EmptyState } from "~/components/empty-state/empty-state";
-import { ExpenseTable } from "~/components/expense-table/expense-table";
+import { ExpenseList } from "~/components/expense-list/expense-list";
 import { Navbar } from "~/components/navbar/navbar";
 import { SummaryCards } from "~/components/summary-cards/summary-cards";
 import { api } from "~/lib/api";
@@ -118,6 +118,7 @@ export default component$(() => {
   const notice = useSignal("");
   const editing = useSignal<Expense | null>(null);
   const editingBudget = useSignal(false);
+  const search = useSignal("");
 
   const loadMonth = $(async () => {
     status.value = "loading";
@@ -182,14 +183,14 @@ export default component$(() => {
     editing.value = null;
   });
 
-  const deleteExpense = $(async (id: number) => {
+  const deleteExpense = $(async (expense: Expense) => {
     notice.value = "";
-    const res = await api.del(`/expenses/${id}`);
+    const res = await api.del(`/expenses/${expense.id}`);
     if (!res.ok) {
       notice.value = `Couldn't delete the expense. ${res.error.message}`;
       return;
     }
-    expenses.value = expenses.value.filter((e) => e.id !== id);
+    expenses.value = expenses.value.filter((e) => e.id !== expense.id);
   });
 
   const isCurrentMonth = month.value === today().slice(0, 7);
@@ -197,7 +198,7 @@ export default component$(() => {
 
   return (
     <>
-      <Navbar user={user.value} />
+      <Navbar user={user.value} search={search} />
 
       <main>
         <div class="month-bar">
@@ -260,11 +261,7 @@ export default component$(() => {
         {status.value === "error" && (
           <div class="card status" role="alert">
             <p>Couldn’t load expenses. Try again.</p>
-            <button
-              type="button"
-              class="btn-secondary"
-              onClick$={loadMonth}
-            >
+            <button type="button" class="btn-secondary" onClick$={loadMonth}>
               Try again
             </button>
           </div>
@@ -287,8 +284,9 @@ export default component$(() => {
 
             <div class="content">
               {expenses.value.length > 0 ? (
-                <ExpenseTable
+                <ExpenseList
                   expenses={expenses.value}
+                  search={search.value}
                   onEdit$={(expense) => (editing.value = expense)}
                   onDelete$={deleteExpense}
                 />

@@ -1,5 +1,11 @@
-import { $, component$, useSignal, useStylesScoped$ } from "@builder.io/qwik";
-import { Link, useNavigate } from "@builder.io/qwik-city";
+import {
+  $,
+  component$,
+  useSignal,
+  useStylesScoped$,
+  type Signal,
+} from "@builder.io/qwik";
+import { useNavigate } from "@builder.io/qwik-city";
 import { Logo } from "~/components/logo/logo";
 import { api } from "~/lib/api";
 import { clearAuth } from "~/lib/auth";
@@ -14,14 +20,10 @@ function initials(name: string): string {
     .join("");
 }
 
-// "Aagaman Koirala" -> "Aagaman K."
-function shortName(name: string): string {
-  const [first, last] = name.trim().split(/\s+/);
-  return last ? `${first} ${last[0].toUpperCase()}.` : first;
-}
-
 type NavbarProps = {
   user: User | null;
+  // Filters the expense list by title or note
+  search: Signal<string>;
 };
 
 export const Navbar = component$<NavbarProps>((props) => {
@@ -36,44 +38,49 @@ export const Navbar = component$<NavbarProps>((props) => {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      justify-content: space-between;
-      gap: 16px;
+      gap: 16px 24px;
     }
-    .left,
+    .search {
+      position: relative;
+      flex: 1 1 280px;
+      max-width: 440px;
+    }
+    .search svg {
+      position: absolute;
+      left: 14px;
+      top: 13px;
+    }
+    .search input {
+      width: 100%;
+      height: 44px;
+      padding: 0 16px 0 42px;
+      border: 1px solid var(--input-border);
+      border-radius: 22px;
+      background: var(--row-hover);
+      color: var(--ink);
+      font-size: 15px;
+    }
+    .search input:focus {
+      outline: 2px solid var(--red);
+      outline-offset: 1px;
+    }
     .right {
       display: flex;
       align-items: center;
-    }
-    .left {
-      gap: 32px;
-    }
-    .right {
       gap: 12px;
-    }
-    .nav-link {
-      padding: 10px 14px;
-      border-radius: 6px;
-      background: var(--red-tint);
-      color: var(--red-dark);
-      text-decoration: none;
-      font-weight: 600;
-      font-size: 15px;
+      margin-left: auto;
     }
     .avatar {
       width: 40px;
       height: 40px;
       border-radius: 50%;
-      background: #eae5df;
-      color: #5a544f;
+      background: var(--red-tint);
+      color: var(--red-dark);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 600;
-    }
-    .name {
-      font-size: 15px;
-      font-weight: 500;
     }
     .logout {
       height: 44px;
@@ -83,6 +90,11 @@ export const Navbar = component$<NavbarProps>((props) => {
     @media (max-width: 480px) {
       .bar {
         padding: 12px 16px;
+      }
+      .search {
+        order: 1;
+        flex-basis: 100%;
+        max-width: none;
       }
     }
   `);
@@ -101,13 +113,31 @@ export const Navbar = component$<NavbarProps>((props) => {
   return (
     <header>
       <div class="bar">
-        <div class="left">
-          <Logo />
-          <nav aria-label="Main">
-            <Link href="/expenses" class="nav-link" aria-current="page">
-              Expenses
-            </Link>
-          </nav>
+        <Logo />
+
+        <div class="search" role="search">
+          <label for="search" class="visually-hidden">
+            Search expenses
+          </label>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--muted)"
+            stroke-width="2"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" />
+          </svg>
+          <input
+            id="search"
+            type="search"
+            placeholder="Search by title or note"
+            bind:value={props.search}
+          />
         </div>
 
         {props.user && (
@@ -115,7 +145,7 @@ export const Navbar = component$<NavbarProps>((props) => {
             <span class="avatar" aria-hidden="true">
               {initials(props.user.name)}
             </span>
-            <span class="name">{shortName(props.user.name)}</span>
+            <span class="visually-hidden">Logged in as {props.user.name}</span>
             <button
               type="button"
               class="btn-secondary logout"

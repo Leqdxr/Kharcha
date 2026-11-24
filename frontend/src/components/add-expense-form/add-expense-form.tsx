@@ -23,7 +23,8 @@ export const AddExpenseForm = component$<AddExpenseFormProps>((props) => {
       padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 14px;
+      border-radius: 12px;
     }
     h2 {
       margin: 0;
@@ -63,6 +64,7 @@ export const AddExpenseForm = component$<AddExpenseFormProps>((props) => {
     // Keep category and date: the next expense is often similar.
     values.title = "";
     values.amount = "";
+    values.note = "";
   });
 
   return (
