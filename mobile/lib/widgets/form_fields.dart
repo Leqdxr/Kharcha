@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -42,6 +43,7 @@ class LabeledTextField extends StatefulWidget {
     this.onSubmitted,
     this.prefixText,
     this.monoInput = false,
+    this.inputFormatters,
   });
 
   final String label;
@@ -58,6 +60,8 @@ class LabeledTextField extends StatefulWidget {
 
   /// Use IBM Plex Mono for the typed text, e.g. for amounts.
   final bool monoInput;
+
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<LabeledTextField> createState() => _LabeledTextFieldState();
@@ -86,6 +90,7 @@ class _LabeledTextFieldState extends State<LabeledTextField> {
           textCapitalization: widget.textCapitalization,
           autofillHints: widget.autofillHints,
           onSubmitted: widget.onSubmitted,
+          inputFormatters: widget.inputFormatters,
           style: inputStyle,
           decoration: InputDecoration(
             hintText: widget.hint,

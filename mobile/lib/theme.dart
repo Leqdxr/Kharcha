@@ -42,9 +42,8 @@ class AppText {
 
 ThemeData buildTheme() {
   final base = ThemeData(useMaterial3: true, brightness: Brightness.light);
-  final textTheme = GoogleFonts.ibmPlexSansTextTheme(
-    base.textTheme,
-  ).apply(bodyColor: AppColors.ink, displayColor: AppColors.ink);
+  final textTheme = GoogleFonts.ibmPlexSansTextTheme(base.textTheme)
+      .apply(bodyColor: AppColors.ink, displayColor: AppColors.ink);
 
   final radius6 = BorderRadius.circular(6);
   OutlineInputBorder border(Color color, [double width = 1]) {
