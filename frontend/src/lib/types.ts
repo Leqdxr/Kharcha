@@ -13,3 +13,9 @@ export type Expense = {
   category: Category;
   date: string; // YYYY-MM-DD
 };
+
+// Response from POST /login and POST /register
+export type AuthResponse = {
+  user: User;
+  token: string;
+};
