@@ -202,10 +202,18 @@ class _ExpensesTabState extends State<ExpensesTab> {
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final filter = _filters[i];
+          final selected = _filter == filter;
           return Center(
             child: ChoiceChip(
               label: Text(filter),
-              selected: _filter == filter,
+              // Set here: the chip ignores a state-based labelStyle in the
+              // theme, which left the unselected labels white on white.
+              labelStyle: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                color: selected ? AppColors.white : AppColors.ink,
+              ),
+              selected: selected,
               onSelected: (_) => setState(() => _filter = filter),
             ),
           );

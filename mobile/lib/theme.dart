@@ -164,17 +164,6 @@ ThemeData buildTheme() {
               : AppColors.inputBorder,
         ),
       ),
-      labelStyle: WidgetStateTextStyle.resolveWith(
-        (states) => GoogleFonts.inter(
-          fontSize: 14,
-          fontWeight: states.contains(WidgetState.selected)
-              ? FontWeight.w600
-              : FontWeight.w400,
-          color: states.contains(WidgetState.selected)
-              ? AppColors.white
-              : AppColors.ink,
-        ),
-      ),
       shape: const StadiumBorder(),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
     ),
