@@ -81,6 +81,8 @@ class _LabeledTextFieldState extends State<LabeledTextField> {
         : GoogleFonts.inter(fontSize: 15, color: AppColors.ink);
 
     return Column(
+      // Only as tall as the label and input, e.g. inside a dialog.
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         FieldLabel(widget.label),
