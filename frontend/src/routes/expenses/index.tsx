@@ -8,6 +8,7 @@ import {
 import { useNavigate, type DocumentHead } from "@builder.io/qwik-city";
 import { AddExpenseForm } from "~/components/add-expense-form/add-expense-form";
 import { BudgetDialog } from "~/components/budget-dialog/budget-dialog";
+import { ConfirmDialog } from "~/components/confirm-dialog/confirm-dialog";
 import { EditExpenseModal } from "~/components/edit-expense-modal/edit-expense-modal";
 import { EmptyState } from "~/components/empty-state/empty-state";
 import { ExpenseList } from "~/components/expense-list/expense-list";
@@ -16,7 +17,13 @@ import { SummaryCards } from "~/components/summary-cards/summary-cards";
 import { UndoToast } from "~/components/undo-toast/undo-toast";
 import { api } from "~/lib/api";
 import { getToken, getUser, saveAuth } from "~/lib/auth";
-import { formatMonth, shiftMonth, sortExpenses, today } from "~/lib/format";
+import {
+  formatMoney,
+  formatMonth,
+  shiftMonth,
+  sortExpenses,
+  today,
+} from "~/lib/format";
 import type { Expense, Summary, User } from "~/lib/types";
 
 export default component$(() => {
@@ -120,6 +127,8 @@ export default component$(() => {
   const editing = useSignal<Expense | null>(null);
   const editingBudget = useSignal(false);
   const search = useSignal("");
+  // The expense waiting for "Delete this expense?" to be confirmed
+  const confirming = useSignal<Expense | null>(null);
   // A deleted expense waiting 5 seconds for Undo before the DELETE is sent
   const pendingDelete = useSignal<{ expense: Expense; timer: number } | null>(
     null,
@@ -321,7 +330,7 @@ export default component$(() => {
                   expenses={expenses.value}
                   search={search.value}
                   onEdit$={(expense) => (editing.value = expense)}
-                  onDelete$={deleteExpense}
+                  onDelete$={(expense) => (confirming.value = expense)}
                 />
               ) : (
                 <EmptyState />
@@ -338,7 +347,25 @@ export default component$(() => {
           expense={editing.value}
           onClose$={() => (editing.value = null)}
           onSaved$={saveExpense}
-          onDelete$={deleteExpense}
+          onDelete$={(expense) => {
+            // Close the edit modal first, then ask "Delete this expense?"
+            editing.value = null;
+            confirming.value = expense;
+          }}
+        />
+      )}
+
+      {confirming.value && (
+        <ConfirmDialog
+          title="Delete this expense?"
+          message={`“${confirming.value.title}” (${formatMoney(confirming.value.amount)}) will be deleted.`}
+          confirmLabel="Delete"
+          onCancel$={() => (confirming.value = null)}
+          onConfirm$={async () => {
+            const expense = confirming.value;
+            confirming.value = null;
+            if (expense) await deleteExpense(expense);
+          }}
         />
       )}
 

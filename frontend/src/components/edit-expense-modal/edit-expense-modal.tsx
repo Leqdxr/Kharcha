@@ -127,11 +127,6 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
     await props.onSaved$(res.data);
   });
 
-  const remove = $(async () => {
-    await props.onClose$();
-    await props.onDelete$(props.expense);
-  });
-
   return (
     <div
       class="modal-backdrop"
@@ -180,7 +175,11 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
           <FieldError id="edit-error" message={message.value} />
 
           <div class="footer">
-            <button type="button" class="delete-btn" onClick$={remove}>
+            <button
+              type="button"
+              class="delete-btn"
+              onClick$={() => props.onDelete$(props.expense)}
+            >
               <svg
                 width="18"
                 height="18"

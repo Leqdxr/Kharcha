@@ -6,6 +6,7 @@ import {
   useVisibleTask$,
   type QRL,
 } from "@builder.io/qwik";
+import { ConfirmDialog } from "~/components/confirm-dialog/confirm-dialog";
 import { FieldError } from "~/components/field/field";
 import { api } from "~/lib/api";
 import type { User } from "~/lib/types";
@@ -75,6 +76,7 @@ export const BudgetDialog = component$<BudgetDialogProps>((props) => {
   const amount = useSignal(props.budget === null ? "" : String(props.budget));
   const error = useSignal("");
   const saving = useSignal(false);
+  const confirmingRemove = useSignal(false);
 
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(({ cleanup }) => {
@@ -94,6 +96,21 @@ export const BudgetDialog = component$<BudgetDialogProps>((props) => {
     }
     await props.onSaved$(res.data);
   });
+
+  if (confirmingRemove.value) {
+    return (
+      <ConfirmDialog
+        title="Remove your monthly budget?"
+        message="The budget bar will be hidden until you set a new one."
+        confirmLabel="Remove"
+        onCancel$={() => (confirmingRemove.value = false)}
+        onConfirm$={async () => {
+          confirmingRemove.value = false;
+          await save(null);
+        }}
+      />
+    );
+  }
 
   return (
     <div
@@ -128,7 +145,9 @@ export const BudgetDialog = component$<BudgetDialogProps>((props) => {
               min="0"
               step="1"
               placeholder="e.g. 20000"
-              bind:value={amount}
+              value={amount.value}
+              // Not bind:value: on a number input it stores a number, not text.
+              onInput$={(_, el) => (amount.value = el.value)}
               aria-invalid={error.value ? "true" : undefined}
               aria-describedby={error.value ? "budget-error" : undefined}
             />
@@ -140,7 +159,7 @@ export const BudgetDialog = component$<BudgetDialogProps>((props) => {
                 type="button"
                 class="clear"
                 disabled={saving.value}
-                onClick$={() => save(null)}
+                onClick$={() => (confirmingRemove.value = true)}
               >
                 Remove budget
               </button>
