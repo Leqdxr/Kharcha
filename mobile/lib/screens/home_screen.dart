@@ -11,6 +11,7 @@ import '../services/api.dart';
 import '../services/auth_storage.dart';
 import '../theme.dart';
 import '../widgets/budget_dialog.dart';
+import '../widgets/confirm_dialog.dart';
 import '../widgets/expense_form.dart';
 import '../widgets/expenses_tab.dart';
 import '../widgets/insights_tab.dart';
@@ -142,10 +143,19 @@ class _HomeScreenState extends State<HomeScreen> {
         });
         _showSnackBar('Expense updated');
       case ExpenseDeleteRequested():
-        _deleteExpense(expense);
+        if (await _confirmDelete(expense) && mounted) _deleteExpense(expense);
       case null:
         break;
     }
+  }
+
+  Future<bool> _confirmDelete(Expense expense) {
+    return confirmDelete(
+      context,
+      title: 'Delete this expense?',
+      message:
+          '“${expense.title}” (${formatMoney(expense.amount)}) will be deleted.',
+    );
   }
 
   /// Removes the row now and sends the DELETE after 5 seconds, unless the
@@ -243,6 +253,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onRefresh: () => _load(refresh: true),
             onAdd: _addExpense,
             onEdit: _editExpense,
+            confirmDelete: _confirmDelete,
             onDelete: _deleteExpense,
             onEditBudget: _editBudget,
             onLogOut: _logOut,

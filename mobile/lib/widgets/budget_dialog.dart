@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import '../models/user.dart';
 import '../services/api.dart';
 import '../theme.dart';
+import 'confirm_dialog.dart';
 import 'form_fields.dart';
 
 /// Opens the dialog to set or clear the monthly budget. Returns the updated
@@ -55,6 +56,16 @@ class _BudgetDialogState extends State<_BudgetDialog> {
     }
   }
 
+  Future<void> _remove() async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Remove your monthly budget?',
+      message: 'The budget bar will be hidden until you set a new one.',
+      confirmLabel: 'Remove',
+    );
+    if (confirmed && mounted) await _save(null);
+  }
+
   void _submit() {
     final text = _amount.text.trim();
     _save(text.isEmpty ? null : int.tryParse(text));
@@ -81,7 +92,7 @@ class _BudgetDialogState extends State<_BudgetDialog> {
       actions: [
         if (widget.budget != null)
           TextButton(
-            onPressed: _saving ? null : () => _save(null),
+            onPressed: _saving ? null : _remove,
             child: const Text('Remove'),
           ),
         TextButton(

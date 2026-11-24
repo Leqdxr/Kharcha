@@ -20,8 +20,8 @@ class ExpenseSaved extends ExpenseFormResult {
   final Expense expense;
 }
 
-/// The user tapped "Delete" in edit mode. The screen deletes it with an
-/// Undo snackbar, the same way as swipe to delete.
+/// The user tapped "Delete" in edit mode. The screen asks to confirm, then
+/// deletes it with an Undo snackbar, the same way as swipe to delete.
 class ExpenseDeleteRequested extends ExpenseFormResult {
   const ExpenseDeleteRequested();
 }

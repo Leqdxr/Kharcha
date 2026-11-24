@@ -7,17 +7,20 @@ import '../models/expense.dart';
 import '../theme.dart';
 
 /// One expense in the day-grouped list: icon, title, "Food · note", amount.
-/// Tap to edit, swipe left to delete (the screen shows an Undo snackbar).
+/// Tap to edit, swipe left to delete. [confirmDelete] asks first; [onDelete]
+/// runs only when the user confirms.
 class ExpenseRow extends StatelessWidget {
   const ExpenseRow({
     super.key,
     required this.expense,
     required this.onTap,
+    required this.confirmDelete,
     required this.onDelete,
   });
 
   final Expense expense;
   final VoidCallback onTap;
+  final Future<bool> Function() confirmDelete;
   final VoidCallback onDelete;
 
   @override
@@ -31,6 +34,7 @@ class ExpenseRow extends StatelessWidget {
     return Dismissible(
       key: ValueKey(expense.id),
       direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => confirmDelete(),
       onDismissed: (_) => onDelete(),
       background: Container(
         alignment: Alignment.centerRight,
@@ -44,7 +48,9 @@ class ExpenseRow extends StatelessWidget {
         button: true,
         excludeSemantics: true,
         customSemanticsActions: {
-          const CustomSemanticsAction(label: 'Delete'): onDelete,
+          const CustomSemanticsAction(label: 'Delete'): () async {
+            if (await confirmDelete()) onDelete();
+          },
         },
         child: InkWell(
           onTap: onTap,

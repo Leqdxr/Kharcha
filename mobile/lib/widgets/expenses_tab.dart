@@ -29,6 +29,7 @@ class ExpensesTab extends StatefulWidget {
     required this.onRefresh,
     required this.onAdd,
     required this.onEdit,
+    required this.confirmDelete,
     required this.onDelete,
     required this.onEditBudget,
     required this.onLogOut,
@@ -44,6 +45,7 @@ class ExpensesTab extends StatefulWidget {
   final Future<void> Function() onRefresh;
   final VoidCallback onAdd;
   final ValueChanged<Expense> onEdit;
+  final Future<bool> Function(Expense) confirmDelete;
   final ValueChanged<Expense> onDelete;
   final VoidCallback onEditBudget;
   final VoidCallback onLogOut;
@@ -174,6 +176,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
             child: ExpenseRow(
               expense: expense,
               onTap: () => widget.onEdit(expense),
+              confirmDelete: () => widget.confirmDelete(expense),
               onDelete: () => widget.onDelete(expense),
             ),
           ),
