@@ -1,11 +1,12 @@
-# Kharchha
+# Kharcha
 
-Kharchha is a simple personal expense tracker. Users create an account, log in, and record their daily expenses with a title, amount, category and date. The dashboard shows a list of expenses, totals, and lets the user filter, edit and delete entries.
+Kharcha is a simple personal expense tracker. Users create an account, log in, and record their daily expenses with a title, amount, category and date. The dashboard shows a list of expenses, totals, and lets the user filter, edit and delete entries.
 
-The project is split into two apps:
+The project is split into three apps:
 
 - `backend/` - a Laravel REST API with token authentication (Laravel Sanctum)
 - `frontend/` - a Qwik City web app that talks to the API
+- `mobile/` - a Flutter Android app that talks to the same API
 
 ## Features
 
@@ -17,6 +18,7 @@ The project is split into two apps:
 - Amounts shown in Nepali Rupees (Rs.)
 - Each user can only see and change their own expenses
 - Responsive layout for mobile screens
+- Native Android app with the same features, keeping you logged in between launches
 
 ## Tech Stack
 
@@ -25,20 +27,26 @@ The project is split into two apps:
 | Backend  | PHP 8.3+, Laravel 13, Laravel Sanctum      |
 | Database | MariaDB                                    |
 | Frontend | Qwik, Qwik City, TypeScript, Vite          |
+| Mobile   | Flutter, Dart                              |
 
 ## Project Structure
 
 ```
-Kharchha/
+Kharcha/
 ├── backend/                  Laravel API
 │   ├── app/Http/Controllers/ AuthController, ExpenseController
 │   ├── app/Models/           User, Expense
 │   ├── database/migrations/  Database tables
 │   └── routes/api.php        API routes
-└── frontend/                 Qwik app
-    ├── src/components/       UI components
-    ├── src/lib/              API client, auth helpers, types, formatting
-    └── src/routes/           Pages: /, /login, /register, /expenses
+├── frontend/                 Qwik app
+│   ├── src/components/       UI components
+│   ├── src/lib/              API client, auth helpers, types, formatting
+│   └── src/routes/           Pages: /, /login, /register, /expenses
+└── mobile/                   Flutter app
+    ├── lib/models/           User, Expense
+    ├── lib/services/         API client, secure token storage
+    ├── lib/screens/          Login, Register, Expenses
+    └── lib/widgets/          Form fields, expense card, summary, add/edit sheet
 ```
 
 ## Requirements
@@ -47,6 +55,7 @@ Kharchha/
 - Composer
 - MariaDB 10.3 or newer
 - Node.js 18.17+ or 20.3+ and npm
+- For the mobile app: Flutter (stable channel), plus an Android emulator or an Android phone with USB debugging
 
 ## Getting Started
 
@@ -112,6 +121,31 @@ The app runs at `http://localhost:5173`. The API address is set in `frontend/.en
 ```
 PUBLIC_API_URL=http://localhost:8000/api
 ```
+
+### 4. Mobile (optional)
+
+The emulator or phone has to reach the backend over the network, so start the API on all interfaces:
+
+```bash
+cd backend
+php artisan serve --host=0.0.0.0 --port=8000
+```
+
+Then, in a new terminal, run the app on an Android emulator:
+
+```bash
+cd mobile
+flutter pub get
+flutter run
+```
+
+The default API URL is `http://10.0.2.2:8000/api`, which is how the emulator reaches your computer's `localhost`. On a real phone (on the same Wi-Fi), pass your computer's IP instead:
+
+```bash
+flutter run --dart-define=API_URL=http://192.168.1.20:8000/api
+```
+
+See [`mobile/README.md`](mobile/README.md) for finding your IP, troubleshooting, and building a release APK.
 
 ## API Reference
 
@@ -194,4 +228,13 @@ npm run dev            # start the dev server
 npm run build          # build for production
 npm run lint           # run ESLint
 npm run fmt            # format code with Prettier
+```
+
+Mobile (inside `mobile/`):
+
+```bash
+flutter pub get        # install dependencies
+flutter run            # run on an emulator or connected phone
+flutter analyze        # check the code for problems
+flutter build apk --release --dart-define=API_URL=http://<your-ip>:8000/api
 ```
