@@ -25,11 +25,11 @@ class SummaryCard extends StatelessWidget {
       if (biggest == null || entry.value > biggest.value) biggest = entry;
     }
 
-    final labelStyle = GoogleFonts.ibmPlexSans(
+    final labelStyle = GoogleFonts.onest(
       fontSize: 13,
       color: AppColors.white.withValues(alpha: 0.8),
     );
-    final valueStyle = GoogleFonts.ibmPlexSans(
+    final valueStyle = GoogleFonts.onest(
       fontSize: 15,
       fontWeight: FontWeight.w600,
       color: AppColors.white,

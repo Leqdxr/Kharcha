@@ -1,13 +1,14 @@
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../theme.dart';
 
-/// The red "K" square followed by "Kharcha".
+/// The red piggy bank icon followed by "Kharcha".
 class Logo extends StatelessWidget {
-  const Logo({super.key, this.size = 32});
+  const Logo({super.key, this.size = 30});
 
-  /// Size of the red square. The word scales with it.
+  /// Size of the piggy bank icon. The word scales with it.
   final double size;
 
   @override
@@ -18,28 +19,16 @@ class Logo extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
+          SvgPicture.asset(
+            'assets/images/piggy-bank.svg',
             width: size,
             height: size,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.red,
-              borderRadius: BorderRadius.circular(size * 0.19),
-            ),
-            child: Text(
-              'K',
-              style: AppText.mono(
-                size: size * 0.56,
-                weight: FontWeight.w600,
-                color: AppColors.white,
-              ),
-            ),
           ),
-          SizedBox(width: size * 0.31),
+          SizedBox(width: size * 0.33),
           Text(
             'Kharcha',
-            style: GoogleFonts.ibmPlexSans(
-              fontSize: size * 0.625,
+            style: GoogleFonts.onest(
+              fontSize: size * 0.66,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
               letterSpacing: -0.2,

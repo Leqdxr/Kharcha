@@ -192,7 +192,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
   Widget _header() {
     final title = Text(
       _isEdit ? 'Edit expense' : 'Add expense',
-      style: GoogleFonts.ibmPlexSans(
+      style: GoogleFonts.onest(
         fontSize: 22,
         fontWeight: FontWeight.w700,
         color: AppColors.ink,
@@ -263,7 +263,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
         DropdownButtonFormField<String>(
           initialValue: _category,
           isExpanded: true,
-          style: GoogleFonts.ibmPlexSans(fontSize: 15, color: AppColors.ink),
+          style: GoogleFonts.onest(fontSize: 15, color: AppColors.ink),
           borderRadius: BorderRadius.circular(6),
           dropdownColor: AppColors.white,
           decoration: InputDecoration(

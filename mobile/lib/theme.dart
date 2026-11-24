@@ -16,13 +16,13 @@ class AppColors {
 
 /// Text styles used outside the Material text theme.
 class AppText {
-  /// IBM Plex Mono, for amounts and dates.
+  /// Geist Mono, for amounts and dates.
   static TextStyle mono({
     double size = 15,
     FontWeight weight = FontWeight.w500,
     Color color = AppColors.ink,
   }) {
-    return GoogleFonts.ibmPlexMono(
+    return GoogleFonts.geistMono(
       fontSize: size,
       fontWeight: weight,
       color: color,
@@ -31,7 +31,7 @@ class AppText {
 
   /// Small red uppercase label, e.g. "NOVEMBER 2026".
   static TextStyle eyebrow({Color color = AppColors.red}) {
-    return GoogleFonts.ibmPlexMono(
+    return GoogleFonts.geistMono(
       fontSize: 12,
       fontWeight: FontWeight.w600,
       letterSpacing: 0.7,
@@ -42,7 +42,7 @@ class AppText {
 
 ThemeData buildTheme() {
   final base = ThemeData(useMaterial3: true, brightness: Brightness.light);
-  final textTheme = GoogleFonts.ibmPlexSansTextTheme(base.textTheme)
+  final textTheme = GoogleFonts.onestTextTheme(base.textTheme)
       .apply(bodyColor: AppColors.ink, displayColor: AppColors.ink);
 
   final radius6 = BorderRadius.circular(6);
@@ -53,7 +53,7 @@ ThemeData buildTheme() {
     );
   }
 
-  final buttonText = GoogleFonts.ibmPlexSans(
+  final buttonText = GoogleFonts.onest(
     fontSize: 15,
     fontWeight: FontWeight.w600,
   );
@@ -88,8 +88,8 @@ ThemeData buildTheme() {
       filled: true,
       fillColor: AppColors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      hintStyle: GoogleFonts.ibmPlexSans(fontSize: 15, color: AppColors.muted),
-      errorStyle: GoogleFonts.ibmPlexSans(fontSize: 13, color: AppColors.red),
+      hintStyle: GoogleFonts.onest(fontSize: 15, color: AppColors.muted),
+      errorStyle: GoogleFonts.onest(fontSize: 13, color: AppColors.red),
       border: border(AppColors.inputBorder),
       enabledBorder: border(AppColors.inputBorder),
       focusedBorder: border(AppColors.red, 2),
@@ -149,7 +149,7 @@ ThemeData buildTheme() {
         ),
       ),
       labelStyle: WidgetStateTextStyle.resolveWith(
-        (states) => GoogleFonts.ibmPlexSans(
+        (states) => GoogleFonts.onest(
           fontSize: 14,
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w600
@@ -179,7 +179,7 @@ ThemeData buildTheme() {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: AppColors.ink,
-      contentTextStyle: GoogleFonts.ibmPlexSans(
+      contentTextStyle: GoogleFonts.onest(
         fontSize: 14,
         color: AppColors.white,
       ),

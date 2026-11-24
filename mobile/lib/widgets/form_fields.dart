@@ -16,7 +16,7 @@ class FieldLabel extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: GoogleFonts.ibmPlexSans(
+        style: GoogleFonts.onest(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: AppColors.ink,
@@ -58,7 +58,7 @@ class LabeledTextField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final String? prefixText;
 
-  /// Use IBM Plex Mono for the typed text, e.g. for amounts.
+  /// Use Geist Mono for the typed text, e.g. for amounts.
   final bool monoInput;
 
   final List<TextInputFormatter>? inputFormatters;
@@ -74,7 +74,7 @@ class _LabeledTextFieldState extends State<LabeledTextField> {
   Widget build(BuildContext context) {
     final inputStyle = widget.monoInput
         ? AppText.mono(size: 15)
-        : GoogleFonts.ibmPlexSans(fontSize: 15, color: AppColors.ink);
+        : GoogleFonts.onest(fontSize: 15, color: AppColors.ink);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -137,7 +137,7 @@ class ErrorMessage extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: GoogleFonts.ibmPlexSans(
+              style: GoogleFonts.onest(
                 fontSize: 13,
                 height: 1.35,
                 color: AppColors.red,

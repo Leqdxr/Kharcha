@@ -44,7 +44,7 @@ class ExpenseCard extends StatelessWidget {
           children: [
             Text(
               'Delete',
-              style: GoogleFonts.ibmPlexSans(
+              style: GoogleFonts.onest(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: AppColors.white,
@@ -87,7 +87,7 @@ class ExpenseCard extends StatelessWidget {
                             expense.title,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.ibmPlexSans(
+                            style: GoogleFonts.onest(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: AppColors.ink,
@@ -155,7 +155,7 @@ class CategoryPill extends StatelessWidget {
       ),
       child: Text(
         category,
-        style: GoogleFonts.ibmPlexSans(
+        style: GoogleFonts.onest(
           fontSize: 13,
           fontWeight: FontWeight.w500,
           color: const Color(0xFF3D3835),

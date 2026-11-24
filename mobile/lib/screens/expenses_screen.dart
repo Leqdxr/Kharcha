@@ -205,14 +205,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               children: [
                 Text(
                   user.name,
-                  style: GoogleFonts.ibmPlexSans(
+                  style: GoogleFonts.onest(
                     fontWeight: FontWeight.w600,
                     color: AppColors.ink,
                   ),
                 ),
                 Text(
                   user.email,
-                  style: GoogleFonts.ibmPlexSans(
+                  style: GoogleFonts.onest(
                     fontSize: 13,
                     color: AppColors.muted,
                   ),
@@ -240,7 +240,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             backgroundColor: const Color(0xFFEAE5DF),
             child: Text(
               user?.initials ?? '',
-              style: GoogleFonts.ibmPlexSans(
+              style: GoogleFonts.onest(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF5A544F),
@@ -268,7 +268,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             Text(
               _errorMessage,
               textAlign: TextAlign.center,
-              style: GoogleFonts.ibmPlexSans(
+              style: GoogleFonts.onest(
                 fontSize: 16,
                 color: AppColors.muted,
               ),
@@ -321,7 +321,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
             child: Text(
               'No $_filter expenses yet.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.ibmPlexSans(color: AppColors.muted),
+              style: GoogleFonts.onest(color: AppColors.muted),
             ),
           ),
         for (final expense in visible)
@@ -358,7 +358,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         const SizedBox(height: 4),
         Text(
           'Your expenses',
-          style: GoogleFonts.ibmPlexSans(
+          style: GoogleFonts.onest(
             fontSize: 26,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.4,
@@ -408,7 +408,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           const SizedBox(height: 24),
           Text(
             'No expenses yet',
-            style: GoogleFonts.ibmPlexSans(
+            style: GoogleFonts.onest(
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
@@ -418,7 +418,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
           Text(
             'Add your first one and your monthly total will show up here.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.ibmPlexSans(
+            style: GoogleFonts.onest(
               fontSize: 15,
               color: AppColors.muted,
             ),
