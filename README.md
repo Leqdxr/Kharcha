@@ -23,7 +23,7 @@ The project is split into two apps:
 | Part     | Technology                                 |
 | -------- | ------------------------------------------ |
 | Backend  | PHP 8.3+, Laravel 13, Laravel Sanctum      |
-| Database | SQLite (default, any Laravel-supported DB) |
+| Database | MariaDB                                    |
 | Frontend | Qwik, Qwik City, TypeScript, Vite          |
 
 ## Project Structure
@@ -45,18 +45,45 @@ Kharchha/
 
 - PHP 8.3 or newer
 - Composer
+- MariaDB 10.3 or newer
 - Node.js 18.17+ or 20.3+ and npm
 
 ## Getting Started
 
-### 1. Backend
+### 1. Database
+
+Create a MariaDB database and user for the app:
+
+```sql
+CREATE DATABASE kharcha CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'kharcha'@'localhost' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON kharcha.* TO 'kharcha'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+### 2. Backend
 
 ```bash
 cd backend
 composer install
 cp .env.example .env
 php artisan key:generate
-touch database/database.sqlite
+```
+
+Set the database connection in `backend/.env`, using the password you chose above:
+
+```
+DB_CONNECTION=mariadb
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=kharcha
+DB_USERNAME=kharcha
+DB_PASSWORD=your_password
+```
+
+Then run the migrations and start the server:
+
+```bash
 php artisan migrate
 php artisan serve
 ```
@@ -69,7 +96,7 @@ By default the API allows requests from `http://localhost:5173`. If the frontend
 FRONTEND_URL=http://localhost:5173
 ```
 
-### 2. Frontend
+### 3. Frontend
 
 In a new terminal:
 
@@ -157,6 +184,8 @@ php artisan serve      # start the API server
 php artisan migrate    # run database migrations
 php artisan test       # run tests
 ```
+
+Tests use an in-memory SQLite database (set in `phpunit.xml`), so they don't touch your MariaDB data. This needs the PHP `pdo_sqlite` extension.
 
 Frontend (inside `frontend/`):
 
