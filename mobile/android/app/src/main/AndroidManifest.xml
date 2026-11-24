@@ -1,8 +1,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Needed to call the Kharcha API and to load Google Fonts. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- usesCleartextTraffic allows plain HTTP, because the backend runs on the
+         laptop over http://. It is needed for both debug and release APKs.
+         Remove it if the backend ever moves to HTTPS. -->
     <application
-        android:label="kharcha"
+        android:label="Kharcha"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
