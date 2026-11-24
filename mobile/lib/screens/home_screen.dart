@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:google_fonts/google_fonts.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -37,10 +35,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String _errorMessage = '';
   int _tab = 0;
 
-  /// A swiped-away expense waiting 5 seconds for Undo before the DELETE.
-  Expense? _pendingDelete;
-  Timer? _deleteTimer;
-
   @override
   void initState() {
     super.initState();
@@ -50,19 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _load();
   }
 
-  @override
-  void dispose() {
-    // Leaving the screen counts as "time ran out".
-    _flushDelete();
-    super.dispose();
-  }
-
   /// Loads the month's expenses and summary. With [refresh] (pull to
   /// refresh) the current data stays on screen and a failure only shows a
   /// snackbar.
   Future<void> _load({bool refresh = false}) async {
-    await _flushDelete();
-    if (!mounted) return;
     if (!refresh) setState(() => _status = _Status.loading);
 
     final month = monthKey(_month);
@@ -105,7 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _logOut() async {
-    await _flushDelete();
     // Tell the backend to drop the token, but log out locally either way.
     await Api.post('/logout');
     await AuthStorage.clear();
@@ -158,54 +142,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Removes the row now and sends the DELETE after 5 seconds, unless the
-  /// user taps Undo first.
-  void _deleteExpense(Expense expense) {
-    // Send any earlier waiting delete now. Not awaited: a swiped row must
-    // leave the list straight away.
-    _flushDelete();
+  /// Called after "Delete this expense?" is confirmed. The row leaves the
+  /// list straight away (a swiped row must), and comes back if the DELETE
+  /// fails.
+  Future<void> _deleteExpense(Expense expense) async {
     setState(() {
       _expenses = _expenses.where((e) => e.id != expense.id).toList();
     });
-    _pendingDelete = expense;
-    _deleteTimer = Timer(const Duration(seconds: 5), _flushDelete);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('Deleted “${expense.title}”'),
-          duration: const Duration(seconds: 5),
-          persist: false,
-          action: SnackBarAction(
-            label: 'Undo',
-            textColor: AppColors.white,
-            onPressed: _undoDelete,
-          ),
-        ),
-      );
-  }
-
-  void _undoDelete() {
-    final expense = _pendingDelete;
-    if (expense == null) return;
-    _deleteTimer?.cancel();
-    _pendingDelete = null;
-    setState(() => _expenses = sortExpenses([..._expenses, expense]));
-  }
-
-  /// Sends the waiting DELETE now. Puts the row back if it fails.
-  Future<void> _flushDelete() async {
-    final expense = _pendingDelete;
-    if (expense == null) return;
-    _deleteTimer?.cancel();
-    _pendingDelete = null;
-
     final res = await Api.delete('/expenses/${expense.id}');
-    if (res case ApiFailure(:final error) when mounted) {
-      if (expense.date.startsWith(monthKey(_month))) {
+    if (!mounted) return;
+    switch (res) {
+      case ApiSuccess():
+        _showSnackBar('Expense deleted');
+      case ApiFailure(:final error):
         setState(() => _expenses = sortExpenses([..._expenses, expense]));
-      }
-      _showSnackBar('Couldn’t delete “${expense.title}”. ${error.message}');
+        _showSnackBar('Couldn’t delete “${expense.title}”. ${error.message}');
     }
   }
 

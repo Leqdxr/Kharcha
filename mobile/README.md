@@ -91,7 +91,7 @@ lib/
 ├── services/
 │   ├── api.dart         HTTP client (auth header, 401/422/network errors)
 │   └── auth_storage.dart Token and user in secure storage
-├── screens/             Login, Register, Home (bottom bar, + button, undo)
+├── screens/             Login, Register, Home (bottom bar, + button)
 └── widgets/             Expenses and Insights tabs, month switcher,
                          summary card, expense row, add/edit bottom sheet,
                          budget dialog, logo, form fields

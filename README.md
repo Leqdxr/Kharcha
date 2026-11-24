@@ -18,7 +18,7 @@ The project is split into three apps:
 - Monthly budget with a progress bar and the amount left
 - "Where it went": spending per category, high to low
 - Expense list grouped by day, filtered by category chips and (on the web) a search box
-- Delete with a 5-second Undo
+- Asks for confirmation before deleting an expense or removing the budget
 - Amounts shown in Nepali Rupees (Rs.)
 - Each user can only see and change their own expenses
 - Responsive web layout down to phone width

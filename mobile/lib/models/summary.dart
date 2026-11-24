@@ -1,6 +1,6 @@
 /// The parts of GET /summary?month=YYYY-MM the app uses. The month's own
 /// total and categories are worked out from the loaded list, so they update
-/// straight away on add, edit, delete and undo.
+/// straight away on add, edit and delete.
 class Summary {
   const Summary({
     required this.previousMonth,
