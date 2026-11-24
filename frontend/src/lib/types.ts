@@ -1,4 +1,6 @@
-export type Category = "Food" | "Travel" | "Bills" | "Other";
+export const CATEGORIES = ["Food", "Travel", "Bills", "Other"] as const;
+
+export type Category = (typeof CATEGORIES)[number];
 
 export type User = {
   id: number;
@@ -12,6 +14,14 @@ export type Expense = {
   amount: number;
   category: Category;
   date: string; // YYYY-MM-DD
+};
+
+// What the add and edit forms hold (input values are strings).
+export type ExpenseInput = {
+  title: string;
+  amount: string;
+  category: Category;
+  date: string;
 };
 
 // Response from POST /login and POST /register
