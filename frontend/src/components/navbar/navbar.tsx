@@ -80,6 +80,11 @@ export const Navbar = component$<NavbarProps>((props) => {
       padding: 0 14px;
       font-size: 14px;
     }
+    @media (max-width: 480px) {
+      .bar {
+        padding: 12px 16px;
+      }
+    }
   `);
 
   const nav = useNavigate();

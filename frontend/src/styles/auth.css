@@ -77,3 +77,18 @@ h1 {
 .switch a {
   font-weight: 600;
 }
+
+@media (max-width: 480px) {
+  .panel {
+    min-height: 0;
+    padding: 24px;
+  }
+
+  .form-side {
+    padding: 40px 20px;
+  }
+
+  h1 {
+    font-size: 28px;
+  }
+}

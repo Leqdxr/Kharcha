@@ -1,12 +1,12 @@
 import { clearAuth, getToken } from "./auth";
 
-export type ApiError = {
+type ApiError = {
   message: string;
   // First validation message per field, e.g. { email: "The email has already been taken." }
   errors: Record<string, string>;
 };
 
-export type ApiResult<T> =
+type ApiResult<T> =
   | { ok: true; data: T }
   | { ok: false; error: ApiError };
 

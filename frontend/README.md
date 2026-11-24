@@ -1,65 +1,58 @@
-# Qwik City App ⚡️
+# Kharcha frontend
 
-- [Qwik Docs](https://qwik.dev/)
-- [Discord](https://qwik.dev/chat)
-- [Qwik GitHub](https://github.com/QwikDev/qwik)
-- [@QwikDev](https://twitter.com/QwikDev)
-- [Vite](https://vitejs.dev/)
+A simple expense tracker built with Qwik City and TypeScript. It talks to the
+Laravel API in `../backend`.
 
----
+## Requirements
 
-## Project Structure
+- Node.js 20 or newer
+- PHP 8.2+ and Composer (for the backend)
 
-This project is using Qwik with [QwikCity](https://qwik.dev/qwikcity/overview/). QwikCity is just an extra set of tools on top of Qwik to make it easier to build a full site, including directory-based routing, layouts, and more.
-
-Inside your project, you'll see the following directory structure:
-
-```
-├── public/
-│   └── ...
-└── src/
-    ├── components/
-    │   └── ...
-    └── routes/
-        └── ...
-```
-
-- `src/routes`: Provides the directory-based routing, which can include a hierarchy of `layout.tsx` layout files, and an `index.tsx` file as the page. Additionally, `index.ts` files are endpoints. Please see the [routing docs](https://qwik.dev/qwikcity/routing/overview/) for more info.
-
-- `src/components`: Recommended directory for components.
-
-- `public`: Any static assets, like images, can be placed in the public directory. Please see the [Vite public directory](https://vitejs.dev/guide/assets.html#the-public-directory) for more info.
-
-## Add Integrations and deployment
-
-Use the `npm run qwik add` command to add additional integrations. Some examples of integrations includes: Cloudflare, Netlify or Express Server, and the [Static Site Generator (SSG)](https://qwik.dev/qwikcity/guides/static-site-generation/).
+## 1. Run the backend
 
 ```shell
-npm run qwik add # or `yarn qwik add`
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate        # uses SQLite; say "yes" if asked to create the database
+php artisan serve          # http://localhost:8000
 ```
 
-## Development
+The API allows requests from `http://localhost:5173` by default. If the
+frontend runs somewhere else, set `FRONTEND_URL` in `backend/.env`.
 
-Development mode uses [Vite's development server](https://vitejs.dev/). The `dev` command will server-side render (SSR) the output during development.
+## 2. Run the frontend
 
 ```shell
-npm start # or `yarn start`
+cd frontend
+npm install
+cp .env.example .env       # sets PUBLIC_API_URL=http://localhost:8000/api
+npm run dev                # http://localhost:5173
 ```
 
-> Note: during dev mode, Vite may request a significant number of `.js` files. This does not represent a Qwik production build.
+Open http://localhost:5173, create an account, and start adding expenses.
 
-## Preview
+## Scripts
 
-The preview command will create a production build of the client modules, a production build of `src/entry.preview.tsx`, and run a local server. The preview server is only for convenience to preview a production build locally and should not be used as a production server.
+| Command               | What it does                     |
+| --------------------- | -------------------------------- |
+| `npm run dev`         | Start the dev server             |
+| `npm run build`       | Production build                 |
+| `npm run build.types` | Type-check with TypeScript       |
+| `npm run lint`        | Lint with ESLint                 |
+| `npm run fmt`         | Format with Prettier             |
 
-```shell
-npm run preview # or `yarn preview`
+## Project layout
+
+```
+src/
+├── components/   UI pieces (navbar, table, forms, modal, ...)
+├── lib/          api.ts (fetch wrapper), auth.ts (localStorage), format.ts, types.ts
+├── routes/       /, /login, /register, /expenses
+├── styles/       auth.css (shared by login and register)
+└── global.css    colors, fonts and shared classes
 ```
 
-## Production
-
-The production build will generate client and server modules by running both client and server build commands. The build command will use Typescript to run a type check on the source code.
-
-```shell
-npm run build # or `yarn build`
-```
+The login token is kept in `localStorage`, so pages check auth and load data in
+the browser (`useVisibleTask$`), not on the server.

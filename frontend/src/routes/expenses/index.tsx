@@ -7,6 +7,7 @@ import {
 } from "@builder.io/qwik";
 import { useNavigate, type DocumentHead } from "@builder.io/qwik-city";
 import { AddExpenseForm } from "~/components/add-expense-form/add-expense-form";
+import { EditExpenseModal } from "~/components/edit-expense-modal/edit-expense-modal";
 import { EmptyState } from "~/components/empty-state/empty-state";
 import { ExpenseTable } from "~/components/expense-table/expense-table";
 import { Navbar } from "~/components/navbar/navbar";
@@ -51,13 +52,47 @@ export default component$(() => {
       gap: 24px;
       align-items: flex-start;
     }
+    .status {
+      padding: 48px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .status p {
+      margin: 0;
+      font-size: 16px;
+    }
+    @media (max-width: 480px) {
+      main {
+        padding: 24px 16px 48px;
+        gap: 24px;
+      }
+      h1 {
+        font-size: 30px;
+      }
+    }
   `);
 
   const nav = useNavigate();
   const user = useSignal<User | null>(null);
   const expenses = useSignal<Expense[]>([]);
-  const loaded = useSignal(false);
+  const status = useSignal<"loading" | "ready" | "error">("loading");
   const notice = useSignal("");
+  const editing = useSignal<Expense | null>(null);
+
+  const loadExpenses = $(async () => {
+    status.value = "loading";
+    const res = await api.get<Expense[]>("/expenses");
+    if (res.ok) {
+      expenses.value = res.data;
+      status.value = "ready";
+    } else {
+      status.value = "error";
+    }
+  });
 
   // localStorage is only available in the browser.
   // eslint-disable-next-line qwik/no-use-visible-task
@@ -67,14 +102,20 @@ export default component$(() => {
       return;
     }
     user.value = getUser();
-
-    const res = await api.get<Expense[]>("/expenses");
-    if (res.ok) expenses.value = res.data;
-    loaded.value = true;
+    await loadExpenses();
   });
 
   const addExpense = $((expense: Expense) => {
+    notice.value = "";
     expenses.value = sortExpenses([...expenses.value, expense]);
+  });
+
+  const saveExpense = $((saved: Expense) => {
+    notice.value = "";
+    expenses.value = sortExpenses(
+      expenses.value.map((e) => (e.id === saved.id ? saved : e)),
+    );
+    editing.value = null;
   });
 
   const deleteExpense = $(async (id: number) => {
@@ -106,28 +147,60 @@ export default component$(() => {
           <h1>Your expenses</h1>
         </div>
 
-        <SummaryCards expenses={monthExpenses} />
-
-        {notice.value && (
-          <p class="field-error" role="alert">
-            {notice.value}
-          </p>
-        )}
-
-        {loaded.value && (
-          <div class="content">
-            {expenses.value.length > 0 ? (
-              <ExpenseTable
-                expenses={expenses.value}
-                onDelete$={deleteExpense}
-              />
-            ) : (
-              <EmptyState />
-            )}
-            <AddExpenseForm onAdded$={addExpense} />
+        {status.value === "loading" && (
+          <div class="card status" role="status">
+            <p>Loading expenses…</p>
           </div>
         )}
+
+        {status.value === "error" && (
+          <div class="card status" role="alert">
+            <p>Couldn’t load expenses. Try again.</p>
+            <button
+              type="button"
+              class="btn-secondary"
+              onClick$={loadExpenses}
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
+        {status.value === "ready" && (
+          <>
+            <SummaryCards expenses={monthExpenses} />
+
+            {notice.value && (
+              <p class="field-error" role="alert">
+                {notice.value}
+              </p>
+            )}
+
+            <div class="content">
+              {expenses.value.length > 0 ? (
+                <ExpenseTable
+                  expenses={expenses.value}
+                  onEdit$={(expense) => (editing.value = expense)}
+                  onDelete$={deleteExpense}
+                />
+              ) : (
+                <EmptyState />
+              )}
+              <AddExpenseForm onAdded$={addExpense} />
+            </div>
+          </>
+        )}
       </main>
+
+      {editing.value && (
+        <EditExpenseModal
+          key={editing.value.id}
+          expense={editing.value}
+          onClose$={() => (editing.value = null)}
+          onSaved$={saveExpense}
+          onDelete$={deleteExpense}
+        />
+      )}
     </>
   );
 });
