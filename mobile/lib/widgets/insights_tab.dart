@@ -162,7 +162,7 @@ class InsightsTab extends StatelessWidget {
               Text(
                 '${formatNumber(entry.value)} · '
                 '${(entry.value / total * 100).round()}%',
-                style: AppText.mono(size: 14, color: AppColors.inkSoft),
+                style: AppText.number(size: 14, color: AppColors.inkSoft),
               ),
             ],
           ),
@@ -216,7 +216,7 @@ class InsightsTab extends StatelessWidget {
                 const SizedBox(width: 12),
                 Text(
                   formatNumber(expense.amount),
-                  style: AppText.mono(weight: FontWeight.w600),
+                  style: AppText.number(weight: FontWeight.w600),
                 ),
               ],
             ),
@@ -304,7 +304,7 @@ class _BarRow extends StatelessWidget {
           child: Text(
             formatNumber(value),
             textAlign: TextAlign.right,
-            style: AppText.mono(size: 13, weight: FontWeight.w600),
+            style: AppText.number(size: 13, weight: FontWeight.w600),
           ),
         ),
       ],

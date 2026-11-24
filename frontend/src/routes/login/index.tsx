@@ -32,7 +32,7 @@ export default component$(() => {
       gap: 8px;
     }
     .eyebrow {
-      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
       font-size: 12px;
       font-weight: 600;
       letter-spacing: 0.06em;

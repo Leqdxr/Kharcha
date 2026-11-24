@@ -24,7 +24,7 @@ export default component$(() => {
     }
     .tag {
       align-self: flex-end;
-      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
       font-size: 12px;
       font-weight: 600;
       letter-spacing: 0.06em;
@@ -47,7 +47,7 @@ export default component$(() => {
       line-height: 1.4;
     }
     .step-number {
-      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
       font-size: 13px;
       color: var(--red);
     }

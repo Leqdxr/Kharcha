@@ -42,7 +42,7 @@ class LabeledTextField extends StatefulWidget {
     this.textCapitalization = TextCapitalization.none,
     this.onSubmitted,
     this.prefixText,
-    this.monoInput = false,
+    this.numberInput = false,
     this.inputFormatters,
     this.maxLines = 1,
     this.maxLength,
@@ -60,8 +60,8 @@ class LabeledTextField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final String? prefixText;
 
-  /// Use Geist Mono for the typed text, e.g. for amounts.
-  final bool monoInput;
+  /// Use equal-width digits for the typed text, e.g. for amounts.
+  final bool numberInput;
 
   final List<TextInputFormatter>? inputFormatters;
   final int maxLines;
@@ -76,8 +76,8 @@ class _LabeledTextFieldState extends State<LabeledTextField> {
 
   @override
   Widget build(BuildContext context) {
-    final inputStyle = widget.monoInput
-        ? AppText.mono(size: 15)
+    final inputStyle = widget.numberInput
+        ? AppText.number(size: 15)
         : GoogleFonts.inter(fontSize: 15, color: AppColors.ink);
 
     return Column(

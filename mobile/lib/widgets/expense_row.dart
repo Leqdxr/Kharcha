@@ -103,7 +103,7 @@ class ExpenseRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text(amount, style: AppText.mono(weight: FontWeight.w600)),
+                Text(amount, style: AppText.number(weight: FontWeight.w600)),
               ],
             ),
           ),

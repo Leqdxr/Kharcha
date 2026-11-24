@@ -82,7 +82,7 @@ class _BudgetDialogState extends State<_BudgetDialog> {
         controller: _amount,
         hint: 'e.g. 20000',
         prefixText: 'Rs. ',
-        monoInput: true,
+        numberInput: true,
         error: _error,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],

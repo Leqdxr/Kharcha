@@ -281,7 +281,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
             ExcludeSemantics(
               child: Text(
                 'Rs.',
-                style: AppText.mono(size: 22, color: AppColors.muted),
+                style: AppText.number(size: 22, color: AppColors.muted),
               ),
             ),
             const SizedBox(width: 6),
@@ -299,7 +299,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                   ],
-                  style: AppText.mono(size: 40, weight: FontWeight.w600),
+                  style: AppText.number(size: 40, weight: FontWeight.w600),
                   decoration: const InputDecoration(
                     hintText: '0',
                     filled: false,
@@ -414,7 +414,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                     ? null
                     : ErrorMessage(_errors['date']!),
               ),
-              child: Text(label, style: AppText.mono(size: 15)),
+              child: Text(label, style: AppText.number(size: 15)),
             ),
           ),
         ),

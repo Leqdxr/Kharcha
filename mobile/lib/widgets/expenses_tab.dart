@@ -159,7 +159,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
                 Text(dayLabel(day.first.date), style: headerStyle),
                 Text(
                   formatMoney(day.fold<double>(0, (sum, e) => sum + e.amount)),
-                  style: AppText.mono(
+                  style: AppText.number(
                     size: 13,
                     weight: FontWeight.w600,
                     color: AppColors.muted,

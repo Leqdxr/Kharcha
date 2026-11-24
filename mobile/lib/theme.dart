@@ -31,22 +31,23 @@ const categoryIcons = <String, IconData>{
 
 /// Text styles used outside the Material text theme.
 class AppText {
-  /// Geist Mono, for amounts and dates.
-  static TextStyle mono({
+  /// Inter with equal-width digits, for amounts and dates, so numbers line up.
+  static TextStyle number({
     double size = 15,
     FontWeight weight = FontWeight.w500,
     Color color = AppColors.ink,
   }) {
-    return GoogleFonts.geistMono(
+    return GoogleFonts.inter(
       fontSize: size,
       fontWeight: weight,
       color: color,
+      fontFeatures: const [FontFeature.tabularFigures()],
     );
   }
 
   /// Small red uppercase label, e.g. "NOVEMBER 2026".
   static TextStyle eyebrow({Color color = AppColors.red}) {
-    return GoogleFonts.geistMono(
+    return GoogleFonts.inter(
       fontSize: 12,
       fontWeight: FontWeight.w600,
       letterSpacing: 0.7,

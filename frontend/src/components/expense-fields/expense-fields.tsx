@@ -33,7 +33,7 @@ export const ExpenseFields = component$<ExpenseFieldsProps>((props) => {
       gap: 6px;
     }
     .amount {
-      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
     }
     .date {
       padding: 0 8px;

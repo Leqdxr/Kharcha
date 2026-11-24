@@ -44,7 +44,7 @@ export const SummaryCards = component$<SummaryCardsProps>((props) => {
       color: var(--red-tint);
     }
     .big {
-      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
       font-size: 36px;
       font-weight: 600;
       letter-spacing: -0.02em;
@@ -76,7 +76,7 @@ export const SummaryCards = component$<SummaryCardsProps>((props) => {
       background: var(--surface);
     }
     .spent {
-      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
       font-size: 22px;
       font-weight: 600;
     }
@@ -123,7 +123,7 @@ export const SummaryCards = component$<SummaryCardsProps>((props) => {
       font-weight: 600;
     }
     .cat-amount {
-      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
       color: #3d3835;
     }
     .cat .track {

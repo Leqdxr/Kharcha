@@ -56,7 +56,7 @@ class SummaryCard extends StatelessWidget {
               alignment: Alignment.centerLeft,
               child: Text(
                 formatMoney(total),
-                style: AppText.mono(
+                style: AppText.number(
                   size: 32,
                   weight: FontWeight.w600,
                   color: AppColors.white,

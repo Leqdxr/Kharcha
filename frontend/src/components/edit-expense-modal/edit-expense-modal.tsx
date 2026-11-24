@@ -35,7 +35,7 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
       gap: 4px;
     }
     .eyebrow {
-      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
       font-size: 12px;
       font-weight: 600;
       letter-spacing: 0.06em;

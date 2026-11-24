@@ -44,8 +44,8 @@ export const ExpenseList = component$<ExpenseListProps>((props) => {
       font-weight: 600;
       color: var(--muted);
     }
-    .mono {
-      font-family: var(--font-mono);
+    .number {
+      font-variant-numeric: tabular-nums;
     }
     ul {
       margin: 0;
@@ -93,7 +93,7 @@ export const ExpenseList = component$<ExpenseListProps>((props) => {
       text-overflow: ellipsis;
     }
     .amount {
-      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
       font-size: 15px;
       font-weight: 600;
       white-space: nowrap;
@@ -162,7 +162,7 @@ export const ExpenseList = component$<ExpenseListProps>((props) => {
         <div key={day.date}>
           <div class="day">
             <span>{dayLabel(day.date)}</span>
-            <span class="mono">
+            <span class="number">
               {formatMoney(day.items.reduce((sum, e) => sum + e.amount, 0))}
             </span>
           </div>

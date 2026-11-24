@@ -40,7 +40,7 @@ export const BudgetDialog = component$<BudgetDialogProps>((props) => {
       gap: 6px;
     }
     .input {
-      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
     }
     .actions {
       display: flex;
