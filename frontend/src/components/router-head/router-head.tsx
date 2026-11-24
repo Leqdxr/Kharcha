@@ -10,11 +10,21 @@ export const RouterHead = component$(() => {
 
   return (
     <>
-      <title>{head.title}</title>
+      <title>{head.title || "Kharcha"}</title>
 
       <link rel="canonical" href={loc.url.href} />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta
+        name="description"
+        content="Kharcha is a simple expense tracker. Write down what you spend and see your monthly total at a glance."
+      />
       <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      />
 
       {head.meta.map((m) => (
         <meta key={m.key} {...m} />
