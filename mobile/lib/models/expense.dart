@@ -8,6 +8,7 @@ class Expense {
     required this.amount,
     required this.category,
     required this.date,
+    this.note,
   });
 
   final int id;
@@ -17,6 +18,8 @@ class Expense {
 
   /// "YYYY-MM-DD", exactly as the API sends it.
   final String date;
+
+  final String? note;
 
   factory Expense.fromJson(Map<String, dynamic> json) {
     final amount = json['amount'];
@@ -28,14 +31,7 @@ class Expense {
           : double.tryParse('$amount') ?? 0,
       category: json['category'] as String,
       date: json['date'] as String,
+      note: json['note'] as String?,
     );
   }
-
-  /// The body for POST /expenses and PUT /expenses/{id}.
-  Map<String, dynamic> toJson() => {
-    'title': title,
-    'amount': amount,
-    'category': category,
-    'date': date,
-  };
 }

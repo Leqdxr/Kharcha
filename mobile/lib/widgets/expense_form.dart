@@ -20,8 +20,8 @@ class ExpenseSaved extends ExpenseFormResult {
   final Expense expense;
 }
 
-/// The user tapped "Delete" in edit mode. The screen confirms and deletes,
-/// the same way as swipe to delete.
+/// The user tapped "Delete" in edit mode. The screen deletes it with an
+/// Undo snackbar, the same way as swipe to delete.
 class ExpenseDeleteRequested extends ExpenseFormResult {
   const ExpenseDeleteRequested();
 }
@@ -42,8 +42,8 @@ Future<ExpenseFormResult?> showExpenseForm(
   );
 }
 
-/// Title, amount, category and date. Saves through the API (POST to add,
-/// PUT to edit) and pops the sheet with the result.
+/// Amount, title, category, date and note. Saves through the API (POST to
+/// add, PUT to edit) and pops the sheet with the result.
 class ExpenseForm extends StatefulWidget {
   const ExpenseForm({super.key, this.expense});
 
@@ -56,6 +56,7 @@ class ExpenseForm extends StatefulWidget {
 
 class _ExpenseFormState extends State<ExpenseForm> {
   late final _title = TextEditingController(text: widget.expense?.title);
+  late final _note = TextEditingController(text: widget.expense?.note);
   late final _amount = TextEditingController(
     text: widget.expense == null ? '' : _amountText(widget.expense!.amount),
   );
@@ -81,6 +82,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
   void dispose() {
     _title.dispose();
     _amount.dispose();
+    _note.dispose();
     super.dispose();
   }
 
@@ -108,6 +110,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
       'amount': _amount.text.trim(),
       'category': _category,
       'date': toIsoDate(_date),
+      'note': _note.text.trim(),
     };
     final res = _isEdit
         ? await Api.put('/expenses/${widget.expense!.id}', body)
@@ -144,6 +147,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _header(),
+                const SizedBox(height: 8),
+                _amountField(),
                 const SizedBox(height: 16),
                 LabeledTextField(
                   label: 'Title',
@@ -153,25 +158,21 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   textCapitalization: TextCapitalization.sentences,
                 ),
                 const SizedBox(height: 16),
-                LabeledTextField(
-                  label: 'Amount',
-                  controller: _amount,
-                  hint: '0',
-                  prefixText: 'Rs. ',
-                  monoInput: true,
-                  error: _errors['amount'],
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  textInputAction: TextInputAction.done,
-                ),
-                const SizedBox(height: 16),
                 _categoryField(),
                 const SizedBox(height: 16),
                 _dateField(),
+                const SizedBox(height: 16),
+                LabeledTextField(
+                  label: 'Note (optional)',
+                  controller: _note,
+                  hint: 'Who, where, why',
+                  error: _errors['note'],
+                  maxLines: 2,
+                  maxLength: 255,
+                  textCapitalization: TextCapitalization.sentences,
+                  textInputAction: TextInputAction.newline,
+                  keyboardType: TextInputType.multiline,
+                ),
                 if (_formError != null) ...[
                   const SizedBox(height: 16),
                   FormErrorBox(
@@ -193,7 +194,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
     final title = Text(
       _isEdit ? 'Edit expense' : 'Add expense',
       style: GoogleFonts.onest(
-        fontSize: 22,
+        fontSize: 20,
         fontWeight: FontWeight.w700,
         color: AppColors.ink,
       ),
@@ -231,6 +232,8 @@ class _ExpenseFormState extends State<ExpenseForm> {
         loadingLabel: 'Adding\u2026',
         loading: _saving,
         onPressed: _submit,
+        height: 52,
+        radius: 12,
       );
     }
     return Row(
@@ -249,37 +252,141 @@ class _ExpenseFormState extends State<ExpenseForm> {
             loadingLabel: 'Saving\u2026',
             loading: _saving,
             onPressed: _submit,
+            height: 52,
+            radius: 12,
           ),
         ),
       ],
     );
   }
 
+  /// The big centered amount with a red underline.
+  Widget _amountField() {
+    final error = _errors['amount'];
+    return Column(
+      children: [
+        // The input below is labelled for screen readers instead.
+        ExcludeSemantics(
+          child: Text(
+            'Amount',
+            style: GoogleFonts.onest(fontSize: 13, color: AppColors.muted),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            ExcludeSemantics(
+              child: Text(
+                'Rs.',
+                style: AppText.mono(size: 22, color: AppColors.muted),
+              ),
+            ),
+            const SizedBox(width: 6),
+            SizedBox(
+              width: 170,
+              child: Semantics(
+                label: 'Amount in rupees',
+                child: TextField(
+                  controller: _amount,
+                  autofocus: !_isEdit,
+                  textAlign: TextAlign.center,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
+                  style: AppText.mono(size: 40, weight: FontWeight.w600),
+                  decoration: const InputDecoration(
+                    hintText: '0',
+                    filled: false,
+                    isDense: true,
+                    contentPadding: EdgeInsets.only(bottom: 2),
+                    border: _amountBorder,
+                    enabledBorder: _amountBorder,
+                    focusedBorder: _amountBorder,
+                    errorBorder: _amountBorder,
+                    focusedErrorBorder: _amountBorder,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (error != null) ...[const SizedBox(height: 6), ErrorMessage(error)],
+      ],
+    );
+  }
+
+  static const _amountBorder = UnderlineInputBorder(
+    borderSide: BorderSide(color: AppColors.red, width: 2),
+  );
+
+  /// Four tiles with icons; the selected one is red-tinted.
   Widget _categoryField() {
+    final error = _errors['category'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const FieldLabel('Category'),
-        DropdownButtonFormField<String>(
-          initialValue: _category,
-          isExpanded: true,
-          style: GoogleFonts.onest(fontSize: 15, color: AppColors.ink),
-          borderRadius: BorderRadius.circular(6),
-          dropdownColor: AppColors.white,
-          decoration: InputDecoration(
-            error: _errors['category'] == null
-                ? null
-                : ErrorMessage(_errors['category']!),
-          ),
-          items: [
-            for (final c in expenseCategories)
-              DropdownMenuItem(value: c, child: Text(c)),
+        Row(
+          children: [
+            for (final (i, category) in expenseCategories.indexed) ...[
+              if (i > 0) const SizedBox(width: 8),
+              Expanded(child: _categoryTile(category)),
+            ],
           ],
-          onChanged: (value) {
-            if (value != null) setState(() => _category = value);
-          },
         ),
+        if (error != null) ...[const SizedBox(height: 6), ErrorMessage(error)],
       ],
+    );
+  }
+
+  Widget _categoryTile(String category) {
+    final selected = _category == category;
+    final color = selected ? AppColors.redDark : AppColors.inkSoft;
+    return Semantics(
+      selected: selected,
+      button: true,
+      excludeSemantics: true,
+      label: category,
+      child: Material(
+        color: selected ? AppColors.redTint : AppColors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: selected ? AppColors.red : AppColors.inputBorder,
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: InkWell(
+          onTap: () => setState(() => _category = category),
+          customBorder: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: SizedBox(
+            height: 64,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(categoryIcons[category], size: 20, color: color),
+                const SizedBox(height: 4),
+                Text(
+                  category,
+                  style: GoogleFonts.onest(
+                    fontSize: 13,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

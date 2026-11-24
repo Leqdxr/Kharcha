@@ -11,8 +11,23 @@ class AppColors {
   static const surface = Color(0xFFF6F4F1);
   static const line = Color(0xFFE6E2DC);
   static const inputBorder = Color(0xFFD6D0C9);
+  static const rowHover = Color(0xFFFBFAF8);
   static const white = Color(0xFFFFFFFF);
+
+  /// Softer than ink, for icons and secondary numbers.
+  static const inkSoft = Color(0xFF3D3835);
+
+  /// Thin lines between list rows.
+  static const rowLine = Color(0xFFEFECE8);
 }
+
+/// Material icons for each category (see DESIGN.md).
+const categoryIcons = <String, IconData>{
+  'Food': Icons.restaurant,
+  'Travel': Icons.directions_bus,
+  'Bills': Icons.bolt,
+  'Other': Icons.sell,
+};
 
 /// Text styles used outside the Material text theme.
 class AppText {
@@ -179,10 +194,7 @@ ThemeData buildTheme() {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: AppColors.ink,
-      contentTextStyle: GoogleFonts.onest(
-        fontSize: 14,
-        color: AppColors.white,
-      ),
+      contentTextStyle: GoogleFonts.onest(fontSize: 14, color: AppColors.white),
     ),
   );
 }

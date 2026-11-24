@@ -44,6 +44,8 @@ class LabeledTextField extends StatefulWidget {
     this.prefixText,
     this.monoInput = false,
     this.inputFormatters,
+    this.maxLines = 1,
+    this.maxLength,
   });
 
   final String label;
@@ -62,6 +64,8 @@ class LabeledTextField extends StatefulWidget {
   final bool monoInput;
 
   final List<TextInputFormatter>? inputFormatters;
+  final int maxLines;
+  final int? maxLength;
 
   @override
   State<LabeledTextField> createState() => _LabeledTextFieldState();
@@ -91,6 +95,8 @@ class _LabeledTextFieldState extends State<LabeledTextField> {
           autofillHints: widget.autofillHints,
           onSubmitted: widget.onSubmitted,
           inputFormatters: widget.inputFormatters,
+          maxLines: widget.maxLines,
+          maxLength: widget.maxLength,
           style: inputStyle,
           decoration: InputDecoration(
             hintText: widget.hint,
@@ -185,19 +191,27 @@ class PrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.loading = false,
     this.loadingLabel,
+    this.height = 48,
+    this.radius = 6,
   });
 
   final String label;
   final String? loadingLabel;
   final VoidCallback? onPressed;
   final bool loading;
+  final double height;
+  final double radius;
 
   @override
   Widget build(BuildContext context) {
     return FilledButton(
       onPressed: loading ? null : onPressed,
-      style: const ButtonStyle(
-        foregroundColor: WidgetStatePropertyAll(AppColors.white),
+      style: ButtonStyle(
+        foregroundColor: const WidgetStatePropertyAll(AppColors.white),
+        minimumSize: WidgetStatePropertyAll(Size(48, height)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+        ),
       ),
       child: loading
           ? Row(
