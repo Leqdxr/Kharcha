@@ -87,11 +87,12 @@ lib/
 ├── main.dart            Start screen: checks for a saved token
 ├── theme.dart           Colors, fonts and the app theme
 ├── format.dart          Money and date formatting
-├── models/              User, Expense
+├── models/              User, Expense, Summary
 ├── services/
 │   ├── api.dart         HTTP client (auth header, 401/422/network errors)
 │   └── auth_storage.dart Token and user in secure storage
-├── screens/             Login, Register, Expenses
-└── widgets/             Logo, form fields, expense card, summary card,
-                         add/edit bottom sheet
+├── screens/             Login, Register, Home (bottom bar, + button, undo)
+└── widgets/             Expenses and Insights tabs, month switcher,
+                         summary card, expense row, add/edit bottom sheet,
+                         budget dialog, logo, form fields
 ```

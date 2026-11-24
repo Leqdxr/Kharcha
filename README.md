@@ -1,6 +1,6 @@
 # Kharcha
 
-Kharcha is a simple personal expense tracker. Users create an account, log in, and record their daily expenses with a title, amount, category and date. The dashboard shows a list of expenses, totals, and lets the user filter, edit and delete entries.
+Kharcha is a simple personal expense tracker. Users create an account, log in, and record their daily expenses with a title, amount, category, date and an optional note. Each month gets its own view: the total compared with last month, a monthly budget with a progress bar, where the money went by category, and the list of expenses grouped by day.
 
 The project is split into three apps:
 
@@ -11,14 +11,18 @@ The project is split into three apps:
 ## Features
 
 - Register, log in and log out with token-based authentication
-- Add, edit and delete expenses
+- Add, edit and delete expenses, each with an optional note
 - Categories: Food, Travel, Bills, Other
-- Filter the expense list by category
-- Summary of total spending
+- Month switcher: the list and every number show one month at a time
+- Total for the month, compared with the month before ("16% less than October")
+- Monthly budget with a progress bar and the amount left
+- "Where it went": spending per category, high to low
+- Expense list grouped by day, filtered by category chips and (on the web) a search box
+- Delete with a 5-second Undo
 - Amounts shown in Nepali Rupees (Rs.)
 - Each user can only see and change their own expenses
-- Responsive layout for mobile screens
-- Native Android app with the same features, keeping you logged in between launches
+- Responsive web layout down to phone width
+- Native Android app with Expenses and Insights tabs, keeping you logged in between launches
 
 ## Tech Stack
 
@@ -34,19 +38,21 @@ The project is split into three apps:
 ```
 Kharcha/
 ├── backend/                  Laravel API
-│   ├── app/Http/Controllers/ AuthController, ExpenseController
+│   ├── app/Http/Controllers/ Auth, Expense, Summary and Budget controllers
 │   ├── app/Models/           User, Expense
 │   ├── database/migrations/  Database tables
-│   └── routes/api.php        API routes
+│   ├── routes/api.php        API routes
+│   └── tests/Feature/        PHPUnit feature tests
 ├── frontend/                 Qwik app
 │   ├── src/components/       UI components
 │   ├── src/lib/              API client, auth helpers, types, formatting
 │   └── src/routes/           Pages: /, /login, /register, /expenses
 └── mobile/                   Flutter app
-    ├── lib/models/           User, Expense
+    ├── lib/models/           User, Expense, Summary
     ├── lib/services/         API client, secure token storage
-    ├── lib/screens/          Login, Register, Expenses
-    └── lib/widgets/          Form fields, expense card, summary, add/edit sheet
+    ├── lib/screens/          Login, Register, Home (Expenses and Insights tabs)
+    └── lib/widgets/          Tabs, month switcher, summary card, expense row,
+                              add/edit sheet, budget dialog, form fields
 ```
 
 ## Requirements
@@ -61,12 +67,14 @@ Kharcha/
 
 ### 1. Database
 
-Create a MariaDB database and user for the app:
+Create a MariaDB database and user for the app, plus a second database for the tests (`php artisan test` empties and rebuilds it on every run, so it must never be the real one):
 
 ```sql
 CREATE DATABASE kharcha CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE kharcha_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'kharcha'@'localhost' IDENTIFIED BY 'your_password';
 GRANT ALL PRIVILEGES ON kharcha.* TO 'kharcha'@'localhost';
+GRANT ALL PRIVILEGES ON kharcha_test.* TO 'kharcha'@'localhost';
 FLUSH PRIVILEGES;
 ```
 
@@ -149,18 +157,23 @@ See [`mobile/README.md`](mobile/README.md) for finding your IP, troubleshooting,
 
 ## API Reference
 
-All endpoints are under `/api`. Protected endpoints need the header `Authorization: Bearer <token>`, using the token returned by register or login.
+All endpoints are under `/api`. Protected endpoints need the header `Authorization: Bearer <token>`, using the token returned by register or login. They only ever read or change the logged-in user's own data.
 
-| Method | Endpoint         | Auth | Description                    |
-| ------ | ---------------- | ---- | ------------------------------ |
-| POST   | `/register`      | No   | Create an account              |
-| POST   | `/login`         | No   | Log in and get a token         |
-| GET    | `/user`          | Yes  | Get the logged-in user         |
-| POST   | `/logout`        | Yes  | Revoke the current token       |
-| GET    | `/expenses`      | Yes  | List the user's expenses       |
-| POST   | `/expenses`      | Yes  | Create an expense              |
-| PUT    | `/expenses/{id}` | Yes  | Update an expense              |
-| DELETE | `/expenses/{id}` | Yes  | Delete an expense              |
+| Method | Endpoint                    | Auth | Description                                         |
+| ------ | --------------------------- | ---- | --------------------------------------------------- |
+| POST   | `/register`                 | No   | Create an account                                   |
+| POST   | `/login`                    | No   | Log in and get a token                              |
+| GET    | `/user`                     | Yes  | Get the logged-in user (includes `monthly_budget`)  |
+| POST   | `/logout`                   | Yes  | Revoke the current token                            |
+| GET    | `/expenses`                 | Yes  | List all the user's expenses, newest first          |
+| GET    | `/expenses?month=YYYY-MM`   | Yes  | List one month's expenses, newest first             |
+| POST   | `/expenses`                 | Yes  | Create an expense                                   |
+| PUT    | `/expenses/{id}`            | Yes  | Update an expense                                   |
+| DELETE | `/expenses/{id}`            | Yes  | Delete an expense                                   |
+| GET    | `/summary?month=YYYY-MM`    | Yes  | Totals for a month (default: the current month)     |
+| PUT    | `/budget`                   | Yes  | Set or clear the monthly budget                     |
+
+Validation errors return `422` with an `errors` object per field. Updating or deleting an expense that belongs to another user returns `403`.
 
 ### Register
 
@@ -186,7 +199,7 @@ POST /api/login
 }
 ```
 
-Returns `{ "user": {...}, "token": "..." }`, or `401` if the email or password is wrong.
+Returns `{ "user": {...}, "token": "..." }`, or `401` if the email or password is wrong. The user object includes `monthly_budget` (a whole number of rupees, or `null`).
 
 ### Create or update an expense
 
@@ -196,7 +209,8 @@ POST /api/expenses
   "title": "Lunch",
   "amount": 350,
   "category": "Food",
-  "date": "2026-11-24"
+  "date": "2026-11-24",
+  "note": "With friends after class"
 }
 ```
 
@@ -206,8 +220,41 @@ Validation rules:
 - `amount` - required, number, 0 or more
 - `category` - required, one of `Food`, `Travel`, `Bills`, `Other`
 - `date` - required, a valid date (`YYYY-MM-DD`)
+- `note` - optional, text, up to 255 characters
 
-Expenses are returned newest first. Updating or deleting an expense that belongs to another user returns `403`.
+### Monthly summary
+
+```
+GET /api/summary?month=2026-11
+```
+
+```json
+{
+  "month": "2026-11",
+  "total": 8060,
+  "count": 10,
+  "previous_month": "2026-10",
+  "previous_total": 9600,
+  "budget": 20000,
+  "by_category": [
+    { "category": "Bills", "total": 3240 },
+    { "category": "Food", "total": 2970 },
+    { "category": "Travel", "total": 1020 },
+    { "category": "Other", "total": 830 }
+  ]
+}
+```
+
+`by_category` is sorted from highest to lowest and only lists categories with spending. `budget` is `null` when no budget is set.
+
+### Monthly budget
+
+```json
+PUT /api/budget
+{ "monthly_budget": 20000 }
+```
+
+`monthly_budget` must be present: a whole number from 0 to 100000000, or `null` to clear the budget. Returns the updated user.
 
 ## Useful Commands
 
@@ -219,7 +266,7 @@ php artisan migrate    # run database migrations
 php artisan test       # run tests
 ```
 
-Tests use an in-memory SQLite database (set in `phpunit.xml`), so they don't touch your MariaDB data. This needs the PHP `pdo_sqlite` extension.
+Tests run on the `kharcha_test` MariaDB database (set in `phpunit.xml`; host, user and password come from `backend/.env`). Create it first, as shown in step 1. Every test run wipes and rebuilds that database, and never touches `kharcha`.
 
 Frontend (inside `frontend/`):
 
