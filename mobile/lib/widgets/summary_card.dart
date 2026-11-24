@@ -25,7 +25,7 @@ class SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final small = GoogleFonts.onest(fontSize: 13, color: AppColors.redTint);
+    final small = GoogleFonts.inter(fontSize: 13, color: AppColors.redTint);
     final pct = percentChange(total, summary.previousTotal);
     final previousName = formatMonthName(parseMonth(summary.previousMonth));
 

@@ -16,7 +16,7 @@ class FieldLabel extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         text,
-        style: GoogleFonts.onest(
+        style: GoogleFonts.inter(
           fontSize: 14,
           fontWeight: FontWeight.w600,
           color: AppColors.ink,
@@ -78,7 +78,7 @@ class _LabeledTextFieldState extends State<LabeledTextField> {
   Widget build(BuildContext context) {
     final inputStyle = widget.monoInput
         ? AppText.mono(size: 15)
-        : GoogleFonts.onest(fontSize: 15, color: AppColors.ink);
+        : GoogleFonts.inter(fontSize: 15, color: AppColors.ink);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -143,7 +143,7 @@ class ErrorMessage extends StatelessWidget {
           Expanded(
             child: Text(
               message,
-              style: GoogleFonts.onest(
+              style: GoogleFonts.inter(
                 fontSize: 13,
                 height: 1.35,
                 color: AppColors.red,

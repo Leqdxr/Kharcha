@@ -193,7 +193,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
   Widget _header() {
     final title = Text(
       _isEdit ? 'Edit expense' : 'Add expense',
-      style: GoogleFonts.onest(
+      style: GoogleFonts.inter(
         fontSize: 20,
         fontWeight: FontWeight.w700,
         color: AppColors.ink,
@@ -269,7 +269,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
         ExcludeSemantics(
           child: Text(
             'Amount',
-            style: GoogleFonts.onest(fontSize: 13, color: AppColors.muted),
+            style: GoogleFonts.inter(fontSize: 13, color: AppColors.muted),
           ),
         ),
         const SizedBox(height: 4),
@@ -376,7 +376,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                 const SizedBox(height: 4),
                 Text(
                   category,
-                  style: GoogleFonts.onest(
+                  style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
                     color: color,

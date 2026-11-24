@@ -57,7 +57,7 @@ class AppText {
 
 ThemeData buildTheme() {
   final base = ThemeData(useMaterial3: true, brightness: Brightness.light);
-  final textTheme = GoogleFonts.onestTextTheme(base.textTheme)
+  final textTheme = GoogleFonts.interTextTheme(base.textTheme)
       .apply(bodyColor: AppColors.ink, displayColor: AppColors.ink);
 
   final radius6 = BorderRadius.circular(6);
@@ -68,7 +68,7 @@ ThemeData buildTheme() {
     );
   }
 
-  final buttonText = GoogleFonts.onest(
+  final buttonText = GoogleFonts.inter(
     fontSize: 15,
     fontWeight: FontWeight.w600,
   );
@@ -103,8 +103,8 @@ ThemeData buildTheme() {
       filled: true,
       fillColor: AppColors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      hintStyle: GoogleFonts.onest(fontSize: 15, color: AppColors.muted),
-      errorStyle: GoogleFonts.onest(fontSize: 13, color: AppColors.red),
+      hintStyle: GoogleFonts.inter(fontSize: 15, color: AppColors.muted),
+      errorStyle: GoogleFonts.inter(fontSize: 13, color: AppColors.red),
       border: border(AppColors.inputBorder),
       enabledBorder: border(AppColors.inputBorder),
       focusedBorder: border(AppColors.red, 2),
@@ -164,7 +164,7 @@ ThemeData buildTheme() {
         ),
       ),
       labelStyle: WidgetStateTextStyle.resolveWith(
-        (states) => GoogleFonts.onest(
+        (states) => GoogleFonts.inter(
           fontSize: 14,
           fontWeight: states.contains(WidgetState.selected)
               ? FontWeight.w600
@@ -194,7 +194,7 @@ ThemeData buildTheme() {
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
       backgroundColor: AppColors.ink,
-      contentTextStyle: GoogleFonts.onest(fontSize: 14, color: AppColors.white),
+      contentTextStyle: GoogleFonts.inter(fontSize: 14, color: AppColors.white),
     ),
   );
 }

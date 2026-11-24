@@ -27,7 +27,7 @@ class Logo extends StatelessWidget {
           SizedBox(width: size * 0.33),
           Text(
             'Kharcha',
-            style: GoogleFonts.onest(
+            style: GoogleFonts.inter(
               fontSize: size * 0.66,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,

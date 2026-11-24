@@ -83,7 +83,7 @@ class ExpenseRow extends StatelessWidget {
                         expense.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.onest(
+                        style: GoogleFonts.inter(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: AppColors.ink,
@@ -94,7 +94,7 @@ class ExpenseRow extends StatelessWidget {
                         sub,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.onest(
+                        style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppColors.muted,
                         ),

@@ -44,7 +44,7 @@ class InsightsTab extends StatelessWidget {
               header: true,
               child: Text(
                 'Insights',
-                style: GoogleFonts.onest(
+                style: GoogleFonts.inter(
                   fontSize: 26,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.5,
@@ -90,7 +90,7 @@ class InsightsTab extends StatelessWidget {
     final most = math.max(total, previous);
     final pct = percentChange(total, previous);
 
-    final normal = GoogleFonts.onest(fontSize: 14, color: AppColors.inkSoft);
+    final normal = GoogleFonts.inter(fontSize: 14, color: AppColors.inkSoft);
     final bold = normal.copyWith(fontWeight: FontWeight.w700);
     final InlineSpan sentence;
     if (pct == null) {
@@ -153,7 +153,7 @@ class InsightsTab extends StatelessWidget {
             children: [
               Text(
                 entry.key,
-                style: GoogleFonts.onest(
+                style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.ink,
@@ -197,14 +197,14 @@ class InsightsTab extends StatelessWidget {
                   child: Text.rich(
                     TextSpan(
                       text: '${i + 1}. ${expense.title} ',
-                      style: GoogleFonts.onest(
+                      style: GoogleFonts.inter(
                         fontSize: 15,
                         color: AppColors.ink,
                       ),
                       children: [
                         TextSpan(
                           text: '· ${formatShortDate(expense.date)}',
-                          style: GoogleFonts.onest(
+                          style: GoogleFonts.inter(
                             fontSize: 13,
                             color: AppColors.muted,
                           ),
@@ -227,7 +227,7 @@ class InsightsTab extends StatelessWidget {
 
   Widget _muted(String text) => Text(
     text,
-    style: GoogleFonts.onest(fontSize: 14, color: AppColors.muted),
+    style: GoogleFonts.inter(fontSize: 14, color: AppColors.muted),
   );
 }
 
@@ -254,7 +254,7 @@ class _Section extends StatelessWidget {
             header: true,
             child: Text(
               title,
-              style: GoogleFonts.onest(
+              style: GoogleFonts.inter(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: AppColors.ink,
@@ -291,7 +291,7 @@ class _BarRow extends StatelessWidget {
           width: 80,
           child: Text(
             label,
-            style: GoogleFonts.onest(fontSize: 13, color: AppColors.muted),
+            style: GoogleFonts.inter(fontSize: 13, color: AppColors.muted),
           ),
         ),
         const SizedBox(width: 10),

@@ -299,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               _errorMessage,
               textAlign: TextAlign.center,
-              style: GoogleFonts.onest(fontSize: 16, color: AppColors.muted),
+              style: GoogleFonts.inter(fontSize: 16, color: AppColors.muted),
             ),
             const SizedBox(height: 20),
             OutlinedButton.icon(
@@ -357,7 +357,7 @@ class _BottomBar extends StatelessWidget {
                           const SizedBox(height: 4),
                           Text(
                             item.label,
-                            style: GoogleFonts.onest(
+                            style: GoogleFonts.inter(
                               fontSize: 12,
                               fontWeight: i == index
                                   ? FontWeight.w600

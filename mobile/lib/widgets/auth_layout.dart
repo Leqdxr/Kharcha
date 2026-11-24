@@ -65,7 +65,7 @@ class AuthLayout extends StatelessWidget {
                     ],
                     Text(
                       title,
-                      style: GoogleFonts.onest(
+                      style: GoogleFonts.inter(
                         fontSize: 28,
                         height: 1.2,
                         fontWeight: FontWeight.w700,
@@ -76,7 +76,7 @@ class AuthLayout extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       subtitle,
-                      style: GoogleFonts.onest(
+                      style: GoogleFonts.inter(
                         fontSize: 15,
                         color: AppColors.muted,
                       ),
@@ -115,7 +115,7 @@ class SwitchAuthLink extends StatelessWidget {
       children: [
         Text(
           text,
-          style: GoogleFonts.onest(fontSize: 15, color: AppColors.muted),
+          style: GoogleFonts.inter(fontSize: 15, color: AppColors.muted),
         ),
         TextButton(
           onPressed: onTap,

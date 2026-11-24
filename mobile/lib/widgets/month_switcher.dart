@@ -36,7 +36,7 @@ class MonthSwitcher extends StatelessWidget {
           liveRegion: true,
           child: Text(
             formatMonth(month),
-            style: GoogleFonts.onest(
+            style: GoogleFonts.inter(
               fontSize: fontSize,
               fontWeight: fontWeight,
               color: AppColors.ink,

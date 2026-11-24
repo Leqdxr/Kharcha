@@ -125,7 +125,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
           child: Text(
             'No $_filter expenses this month.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.onest(color: AppColors.muted),
+            style: GoogleFonts.inter(color: AppColors.muted),
           ),
         ),
       ];
@@ -141,7 +141,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
       }
     }
 
-    final headerStyle = GoogleFonts.onest(
+    final headerStyle = GoogleFonts.inter(
       fontSize: 13,
       fontWeight: FontWeight.w600,
       color: AppColors.muted,
@@ -186,7 +186,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
         child: Text(
           'Swipe left on an expense to delete it',
           textAlign: TextAlign.center,
-          style: GoogleFonts.onest(fontSize: 13, color: AppColors.muted),
+          style: GoogleFonts.inter(fontSize: 13, color: AppColors.muted),
         ),
       ),
     ];
@@ -233,14 +233,14 @@ class _ExpensesTabState extends State<ExpensesTab> {
               children: [
                 Text(
                   user.name,
-                  style: GoogleFonts.onest(
+                  style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
                     color: AppColors.ink,
                   ),
                 ),
                 Text(
                   user.email,
-                  style: GoogleFonts.onest(
+                  style: GoogleFonts.inter(
                     fontSize: 13,
                     color: AppColors.muted,
                   ),
@@ -268,7 +268,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
             backgroundColor: AppColors.redTint,
             child: Text(
               user?.initials ?? '',
-              style: GoogleFonts.onest(
+              style: GoogleFonts.inter(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.redDark,
@@ -297,7 +297,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
           const SizedBox(height: 24),
           Text(
             'No expenses yet',
-            style: GoogleFonts.onest(
+            style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: AppColors.ink,
@@ -307,7 +307,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
           Text(
             'Add your first one and your monthly total will show up here.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.onest(fontSize: 15, color: AppColors.muted),
+            style: GoogleFonts.inter(fontSize: 15, color: AppColors.muted),
           ),
           const SizedBox(height: 20),
           FilledButton.icon(
