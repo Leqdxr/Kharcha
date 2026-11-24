@@ -37,6 +37,7 @@ export const AddExpenseForm = component$<AddExpenseFormProps>((props) => {
     amount: "",
     category: "Food",
     date: today(),
+    note: "",
   });
   const errors = useSignal<Record<string, string>>({});
   const message = useSignal("");

@@ -1,26 +1,36 @@
-import { component$, useStylesScoped$ } from "@builder.io/qwik";
-import { formatMoney } from "~/lib/format";
-import type { Expense } from "~/lib/types";
+import { component$, useStylesScoped$, type QRL } from "@builder.io/qwik";
+import { formatMoney, formatMonth, today } from "~/lib/format";
+import type { Category, Expense, Summary } from "~/lib/types";
 
 type SummaryCardsProps = {
-  // Only this month's expenses
+  month: string; // YYYY-MM
+  // The selected month's expenses (without one waiting to be deleted)
   expenses: Expense[];
+  // Gives the previous month's total and the budget
+  summary: Summary;
+  onEditBudget$: QRL<() => void>;
 };
+
+const ARROW_DOWN = "M12 5v14M6 13l6 6 6-6";
+const ARROW_UP = "M12 19V5M6 11l6-6 6 6";
+const DASH = "M5 12h14";
 
 export const SummaryCards = component$<SummaryCardsProps>((props) => {
   useStylesScoped$(`
     section {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 16px;
     }
     .card {
+      border-radius: 12px;
       padding: 24px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
     .total {
+      gap: 8px;
       border-color: var(--red);
       background: var(--red);
       color: var(--white);
@@ -33,56 +43,240 @@ export const SummaryCards = component$<SummaryCardsProps>((props) => {
     .total .label {
       color: var(--red-tint);
     }
-    .number {
+    .big {
       font-family: var(--font-mono);
-      font-size: 34px;
+      font-size: 36px;
       font-weight: 600;
       letter-spacing: -0.02em;
     }
-    .category {
-      font-size: 26px;
-      font-weight: 700;
-      line-height: 1.3;
+    .compare {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
     }
-    .category-amount {
+    .head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .edit {
+      height: 32px;
+      padding: 0 10px;
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      color: var(--red);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .edit:hover {
+      background: var(--surface);
+    }
+    .spent {
       font-family: var(--font-mono);
-      font-size: 18px;
+      font-size: 22px;
+      font-weight: 600;
+    }
+    .of {
+      font-size: 15px;
       font-weight: 500;
       color: var(--muted);
     }
+    .track {
+      height: 10px;
+      border-radius: 5px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+    .fill {
+      height: 100%;
+      border-radius: 5px;
+      background: var(--red);
+    }
+    .fill.over {
+      background: #7a1810;
+    }
+    .note {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .set-budget {
+      align-self: flex-start;
+      height: 44px;
+      font-size: 15px;
+    }
+    .cat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .cat-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .cat-name {
+      font-weight: 600;
+    }
+    .cat-amount {
+      font-family: var(--font-mono);
+      color: #3d3835;
+    }
+    .cat .track {
+      height: 6px;
+      border-radius: 3px;
+    }
+    .cat .fill {
+      border-radius: 3px;
+    }
+    @media (max-width: 480px) {
+      .big {
+        font-size: 30px;
+      }
+    }
   `);
 
-  const total = props.expenses.reduce((sum, e) => sum + e.amount, 0);
+  const { month, expenses, summary } = props;
+  const total = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-  const byCategory = new Map<string, number>();
-  for (const e of props.expenses) {
+  // Compared with last month
+  let compareIcon = DASH;
+  let compareText = "First month of data";
+  if (summary.previous_total > 0) {
+    const pct = Math.round(
+      ((total - summary.previous_total) / summary.previous_total) * 100,
+    );
+    const previousName = formatMonth(summary.previous_month, "short");
+    compareIcon = pct <= 0 ? ARROW_DOWN : ARROW_UP;
+    compareText = `${Math.abs(pct)}% ${pct <= 0 ? "less" : "more"} than ${previousName}`;
+  }
+
+  // Budget
+  const budget = summary.budget;
+  const left = budget === null ? 0 : budget - total;
+  let budgetPct = 0;
+  if (budget) budgetPct = Math.min(100, Math.round((total / budget) * 100));
+  else if (budget === 0 && total > 0) budgetPct = 100;
+  let budgetNote = "";
+  if (budget !== null) {
+    if (left >= 0) {
+      budgetNote = `${formatMoney(left)} left`;
+      if (month === today().slice(0, 7)) {
+        const now = new Date();
+        const lastDay = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+        ).getDate();
+        const daysLeft = lastDay - now.getDate();
+        budgetNote += ` · ${daysLeft} ${daysLeft === 1 ? "day" : "days"} to go`;
+      }
+    } else {
+      budgetNote = `${formatMoney(-left)} over budget`;
+    }
+  }
+
+  // Where it went, high to low
+  const byCategory = new Map<Category, number>();
+  for (const e of expenses) {
     byCategory.set(e.category, (byCategory.get(e.category) ?? 0) + e.amount);
   }
-  let biggest: [string, number] | null = null;
-  for (const entry of byCategory) {
-    if (!biggest || entry[1] > biggest[1]) biggest = entry;
-  }
+  const breakdown = [...byCategory].sort((a, b) => b[1] - a[1]);
 
   return (
     <section aria-label="Summary">
       <div class="card total">
-        <span class="label">Spent this month</span>
-        <span class="number">{formatMoney(total)}</span>
+        <span class="label">Spent in {formatMonth(month, "short")}</span>
+        <span class="big">{formatMoney(total)}</span>
+        <span class="compare">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <path d={compareIcon} />
+          </svg>
+          {compareText}
+        </span>
       </div>
+
       <div class="card">
-        <span class="label">Entries</span>
-        <span class="number">{props.expenses.length}</span>
-      </div>
-      <div class="card">
-        <span class="label">Biggest category</span>
-        {biggest ? (
-          <span class="category">
-            {biggest[0]}{" "}
-            <span class="category-amount">{formatMoney(biggest[1])}</span>
-          </span>
+        <div class="head">
+          <span class="label">Monthly budget</span>
+          {budget !== null && (
+            <button
+              type="button"
+              class="edit"
+              aria-label="Edit monthly budget"
+              onClick$={props.onEditBudget$}
+            >
+              Edit
+            </button>
+          )}
+        </div>
+        {budget === null ? (
+          <>
+            <span class="note">Set a monthly budget</span>
+            <button
+              type="button"
+              class="btn-secondary set-budget"
+              onClick$={props.onEditBudget$}
+            >
+              Set budget
+            </button>
+          </>
         ) : (
-          <span class="category">None yet</span>
+          <>
+            <span class="spent">
+              {formatMoney(total)}{" "}
+              <span class="of">of {formatMoney(budget)}</span>
+            </span>
+            <div
+              class="track"
+              role="progressbar"
+              aria-label="Budget used"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={budgetPct}
+            >
+              <div
+                class={["fill", { over: left < 0 }]}
+                style={{ width: `${budgetPct}%` }}
+              />
+            </div>
+            <span class="note">{budgetNote}</span>
+          </>
         )}
+      </div>
+
+      <div class="card">
+        <span class="label">Where it went</span>
+        {breakdown.length === 0 && <span class="note">Nothing spent yet.</span>}
+        {breakdown.map(([category, amount]) => {
+          const pct = total ? Math.round((amount / total) * 100) : 0;
+          return (
+            <div key={category} class="cat">
+              <div class="cat-row">
+                <span class="cat-name">{category}</span>
+                <span class="cat-amount">
+                  {formatMoney(amount)} · {pct}%
+                </span>
+              </div>
+              <div class="track">
+                <div class="fill" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

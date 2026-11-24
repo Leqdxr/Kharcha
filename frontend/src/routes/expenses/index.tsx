@@ -7,15 +7,16 @@ import {
 } from "@builder.io/qwik";
 import { useNavigate, type DocumentHead } from "@builder.io/qwik-city";
 import { AddExpenseForm } from "~/components/add-expense-form/add-expense-form";
+import { BudgetDialog } from "~/components/budget-dialog/budget-dialog";
 import { EditExpenseModal } from "~/components/edit-expense-modal/edit-expense-modal";
 import { EmptyState } from "~/components/empty-state/empty-state";
 import { ExpenseTable } from "~/components/expense-table/expense-table";
 import { Navbar } from "~/components/navbar/navbar";
 import { SummaryCards } from "~/components/summary-cards/summary-cards";
 import { api } from "~/lib/api";
-import { getToken, getUser } from "~/lib/auth";
-import { sortExpenses, today } from "~/lib/format";
-import type { Expense, User } from "~/lib/types";
+import { getToken, getUser, saveAuth } from "~/lib/auth";
+import { formatMonth, shiftMonth, sortExpenses, today } from "~/lib/format";
+import type { Expense, Summary, User } from "~/lib/types";
 
 export default component$(() => {
   useStylesScoped$(`
@@ -27,24 +28,50 @@ export default component$(() => {
       flex-direction: column;
       gap: 32px;
     }
-    .heading {
+    .month-bar {
       display: flex;
-      flex-direction: column;
-      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
     }
-    .month {
-      font-family: var(--font-mono);
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      color: var(--red);
+    .switcher {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .switcher button {
+      width: 44px;
+      height: 44px;
+      flex: none;
+      border: 1px solid var(--input-border);
+      border-radius: 22px;
+      background: var(--white);
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .switcher button:hover:not(:disabled) {
+      background: var(--surface);
+    }
+    .switcher button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
     }
     h1 {
-      margin: 0;
-      font-size: 36px;
-      line-height: 1.15;
+      margin: 0 8px;
+      min-width: 250px;
+      text-align: center;
+      font-size: 32px;
+      line-height: 1.2;
       font-weight: 700;
       letter-spacing: -0.02em;
+    }
+    .count {
+      font-size: 15px;
+      color: var(--muted);
     }
     .content {
       display: flex;
@@ -71,27 +98,56 @@ export default component$(() => {
         gap: 24px;
       }
       h1 {
-        font-size: 30px;
+        margin: 0;
+        min-width: 0;
+        flex: 1;
+        font-size: 24px;
+      }
+      .switcher {
+        width: 100%;
       }
     }
   `);
 
   const nav = useNavigate();
   const user = useSignal<User | null>(null);
+  const month = useSignal(today().slice(0, 7)); // YYYY-MM
   const expenses = useSignal<Expense[]>([]);
+  const summary = useSignal<Summary | null>(null);
   const status = useSignal<"loading" | "ready" | "error">("loading");
   const notice = useSignal("");
   const editing = useSignal<Expense | null>(null);
+  const editingBudget = useSignal(false);
 
-  const loadExpenses = $(async () => {
+  const loadMonth = $(async () => {
     status.value = "loading";
-    const res = await api.get<Expense[]>("/expenses");
-    if (res.ok) {
-      expenses.value = res.data;
+    const [list, totals] = await Promise.all([
+      api.get<Expense[]>(`/expenses?month=${month.value}`),
+      api.get<Summary>(`/summary?month=${month.value}`),
+    ]);
+    if (list.ok && totals.ok) {
+      expenses.value = list.data;
+      summary.value = totals.data;
       status.value = "ready";
     } else {
       status.value = "error";
     }
+  });
+
+  const changeMonth = $(async (by: number) => {
+    notice.value = "";
+    month.value = shiftMonth(month.value, by);
+    await loadMonth();
+  });
+
+  const saveBudget = $((saved: User) => {
+    if (summary.value) {
+      summary.value = { ...summary.value, budget: saved.monthly_budget };
+    }
+    const token = getToken();
+    if (token) saveAuth(token, saved);
+    user.value = saved;
+    editingBudget.value = false;
   });
 
   // localStorage is only available in the browser.
@@ -102,19 +158,27 @@ export default component$(() => {
       return;
     }
     user.value = getUser();
-    await loadExpenses();
+    await loadMonth();
   });
 
-  const addExpense = $((expense: Expense) => {
+  const addExpense = $(async (expense: Expense) => {
     notice.value = "";
+    // Added to another month: show that month.
+    if (!expense.date.startsWith(month.value)) {
+      month.value = expense.date.slice(0, 7);
+      await loadMonth();
+      return;
+    }
     expenses.value = sortExpenses([...expenses.value, expense]);
   });
 
   const saveExpense = $((saved: Expense) => {
     notice.value = "";
-    expenses.value = sortExpenses(
-      expenses.value.map((e) => (e.id === saved.id ? saved : e)),
-    );
+    const others = expenses.value.filter((e) => e.id !== saved.id);
+    // Moved to another month: it leaves this list.
+    expenses.value = saved.date.startsWith(month.value)
+      ? sortExpenses([...others, saved])
+      : others;
     editing.value = null;
   });
 
@@ -128,23 +192,63 @@ export default component$(() => {
     expenses.value = expenses.value.filter((e) => e.id !== id);
   });
 
-  // The summary cards count this month only, e.g. "2026-11".
-  const thisMonth = today().slice(0, 7);
-  const monthExpenses = expenses.value.filter((e) =>
-    e.date.startsWith(thisMonth),
-  );
-  const monthLabel = new Date()
-    .toLocaleDateString("en-US", { month: "long", year: "numeric" })
-    .toUpperCase();
+  const isCurrentMonth = month.value === today().slice(0, 7);
+  const count = expenses.value.length;
 
   return (
     <>
       <Navbar user={user.value} />
 
       <main>
-        <div class="heading">
-          <span class="month">{monthLabel}</span>
-          <h1>Your expenses</h1>
+        <div class="month-bar">
+          <div class="switcher">
+            <button
+              type="button"
+              aria-label="Previous month"
+              onClick$={() => changeMonth(-1)}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <path d="M15 6l-6 6 6 6" />
+              </svg>
+            </button>
+            <h1 aria-live="polite">{formatMonth(month.value, "long")}</h1>
+            <button
+              type="button"
+              aria-label="Next month"
+              disabled={isCurrentMonth}
+              onClick$={() => changeMonth(1)}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                aria-hidden="true"
+              >
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
+          </div>
+          {status.value === "ready" && (
+            <span class="count">
+              {count} {count === 1 ? "expense" : "expenses"}{" "}
+              {isCurrentMonth
+                ? "this month"
+                : `in ${formatMonth(month.value, "short")}`}
+            </span>
+          )}
         </div>
 
         {status.value === "loading" && (
@@ -159,16 +263,21 @@ export default component$(() => {
             <button
               type="button"
               class="btn-secondary"
-              onClick$={loadExpenses}
+              onClick$={loadMonth}
             >
               Try again
             </button>
           </div>
         )}
 
-        {status.value === "ready" && (
+        {status.value === "ready" && summary.value && (
           <>
-            <SummaryCards expenses={monthExpenses} />
+            <SummaryCards
+              month={month.value}
+              expenses={expenses.value}
+              summary={summary.value}
+              onEditBudget$={() => (editingBudget.value = true)}
+            />
 
             {notice.value && (
               <p class="field-error" role="alert">
@@ -199,6 +308,14 @@ export default component$(() => {
           onClose$={() => (editing.value = null)}
           onSaved$={saveExpense}
           onDelete$={deleteExpense}
+        />
+      )}
+
+      {editingBudget.value && summary.value && (
+        <BudgetDialog
+          budget={summary.value.budget}
+          onClose$={() => (editingBudget.value = false)}
+          onSaved$={saveBudget}
         />
       )}
     </>

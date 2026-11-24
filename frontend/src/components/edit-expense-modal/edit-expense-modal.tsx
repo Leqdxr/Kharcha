@@ -22,24 +22,6 @@ type EditExpenseModalProps = {
 
 export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
   useStylesScoped$(`
-    .backdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 10;
-      padding: 48px 20px;
-      overflow-y: auto;
-      display: flex;
-      background: rgba(27, 25, 24, 0.75);
-    }
-    .dialog {
-      margin: auto;
-      width: 100%;
-      max-width: 480px;
-      border-radius: 12px;
-      background: var(--white);
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
-      overflow: hidden;
-    }
     .header {
       padding: 22px 24px;
       display: flex;
@@ -111,6 +93,7 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
     amount: String(props.expense.amount),
     category: props.expense.category,
     date: props.expense.date,
+    note: props.expense.note ?? "",
   });
   const errors = useSignal<Record<string, string>>({});
   const message = useSignal("");
@@ -156,13 +139,13 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
 
   return (
     <div
-      class="backdrop"
+      class="modal-backdrop"
       document:onKeyDown$={(event) => {
         if (event.key === "Escape") props.onClose$();
       }}
     >
       <div
-        class="dialog"
+        class="modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="edit-heading"

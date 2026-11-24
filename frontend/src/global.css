@@ -7,6 +7,7 @@
   --surface: #f6f4f1;
   --line: #e6e2dc;
   --input-border: #d6d0c9;
+  --row-hover: #fbfaf8;
   --white: #ffffff;
 
   --font-sans: "Onest", system-ui, sans-serif;
@@ -167,4 +168,26 @@ select {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--white);
+}
+
+/* Modal dialogs (edit expense, budget) */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  padding: 48px 20px;
+  overflow-y: auto;
+  display: flex;
+  background: rgba(27, 25, 24, 0.75);
+}
+
+.modal {
+  margin: auto;
+  width: 100%;
+  max-width: 480px;
+  border-radius: 12px;
+  background: var(--white);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
 }
