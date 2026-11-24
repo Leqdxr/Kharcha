@@ -86,9 +86,28 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   Future<void> _addExpense() async {
-    final created = await showExpenseForm(context);
-    if (created == null || !mounted) return;
-    setState(() => _expenses = sortExpenses([..._expenses, created]));
+    final result = await showExpenseForm(context);
+    if (result is! ExpenseSaved || !mounted) return;
+    setState(() => _expenses = sortExpenses([..._expenses, result.expense]));
+    _showSnackBar('Expense added');
+  }
+
+  Future<void> _editExpense(Expense expense) async {
+    final result = await showExpenseForm(context, expense: expense);
+    if (!mounted) return;
+    switch (result) {
+      case ExpenseSaved(expense: final saved):
+        setState(() {
+          _expenses = sortExpenses([
+            for (final e in _expenses) e.id == saved.id ? saved : e,
+          ]);
+        });
+        _showSnackBar('Expense updated');
+      case ExpenseDeleteRequested():
+        if (await _confirmDelete(expense)) _removeExpense(expense);
+      case null:
+        break;
+    }
   }
 
   /// Asks first, then calls DELETE. Returns true only if it was deleted.
@@ -116,9 +135,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
         ],
       ),
     );
-    if (confirmed != true) return false;
+    if (confirmed != true || !mounted) return false;
 
     final res = await Api.delete('/expenses/${expense.id}');
+    if (!mounted) return false;
     if (res case ApiFailure(:final error)) {
       _showSnackBar('Couldn’t delete the expense. ${error.message}');
       return false;
@@ -127,9 +147,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 
   void _removeExpense(Expense expense) {
+    if (!mounted) return;
     setState(() {
       _expenses = _expenses.where((e) => e.id != expense.id).toList();
     });
+    _showSnackBar('Expense deleted');
   }
 
   void _showSnackBar(String message) {
@@ -310,6 +332,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               expense: expense,
               confirmDelete: () => _confirmDelete(expense),
               onDeleted: () => _removeExpense(expense),
+              onTap: () => _editExpense(expense),
             ),
           ),
         // Room so the FAB doesn't cover the last card.

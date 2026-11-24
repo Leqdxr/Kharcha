@@ -8,33 +8,70 @@ import '../services/api.dart';
 import '../theme.dart';
 import 'form_fields.dart';
 
-/// Opens the "Add expense" bottom sheet. Returns the created expense,
-/// or null if the sheet was closed.
-Future<Expense?> showExpenseForm(BuildContext context) {
-  return showModalBottomSheet<Expense>(
+/// What the expense sheet closed with. A plain close returns null.
+sealed class ExpenseFormResult {
+  const ExpenseFormResult();
+}
+
+/// The expense was created (add mode) or updated (edit mode).
+class ExpenseSaved extends ExpenseFormResult {
+  const ExpenseSaved(this.expense);
+
+  final Expense expense;
+}
+
+/// The user tapped "Delete" in edit mode. The screen confirms and deletes,
+/// the same way as swipe to delete.
+class ExpenseDeleteRequested extends ExpenseFormResult {
+  const ExpenseDeleteRequested();
+}
+
+/// Opens the expense bottom sheet: "Add expense" without [expense],
+/// "Edit expense" (pre-filled) with one.
+Future<ExpenseFormResult?> showExpenseForm(
+  BuildContext context, {
+  Expense? expense,
+}) {
+  return showModalBottomSheet<ExpenseFormResult>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
     backgroundColor: AppColors.white,
-    builder: (_) => const ExpenseForm(),
+    builder: (_) => ExpenseForm(expense: expense),
   );
 }
 
-/// Title, amount, category and date. Saves through the API and pops the
-/// sheet with the saved expense.
+/// Title, amount, category and date. Saves through the API (POST to add,
+/// PUT to edit) and pops the sheet with the result.
 class ExpenseForm extends StatefulWidget {
-  const ExpenseForm({super.key});
+  const ExpenseForm({super.key, this.expense});
+
+  /// The expense being edited, or null to add a new one.
+  final Expense? expense;
 
   @override
   State<ExpenseForm> createState() => _ExpenseFormState();
 }
 
 class _ExpenseFormState extends State<ExpenseForm> {
-  final _title = TextEditingController();
-  final _amount = TextEditingController();
-  String _category = expenseCategories.first;
-  DateTime _date = DateTime.now();
+  late final _title = TextEditingController(text: widget.expense?.title);
+  late final _amount = TextEditingController(
+    text: widget.expense == null ? '' : _amountText(widget.expense!.amount),
+  );
+  late String _category = widget.expense?.category ?? expenseCategories.first;
+  late DateTime _date = widget.expense == null
+      ? DateTime.now()
+      : DateTime.parse(widget.expense!.date);
+
+  bool get _isEdit => widget.expense != null;
+
+  /// 340.0 -> "340", 12.5 -> "12.5"
+  static String _amountText(double amount) {
+    return amount == amount.truncateToDouble()
+        ? amount.toInt().toString()
+        : amount.toString();
+  }
 
   bool _saving = false;
   Map<String, String> _errors = {};
@@ -66,18 +103,21 @@ class _ExpenseFormState extends State<ExpenseForm> {
     });
 
     // Amount is sent as typed; Laravel's "numeric" rule checks it.
-    final res = await Api.post('/expenses', {
+    final body = {
       'title': _title.text.trim(),
       'amount': _amount.text.trim(),
       'category': _category,
       'date': toIsoDate(_date),
-    });
+    };
+    final res = _isEdit
+        ? await Api.put('/expenses/${widget.expense!.id}', body)
+        : await Api.post('/expenses', body);
     if (!mounted) return;
 
     switch (res) {
       case ApiSuccess(:final data):
         Navigator.of(context)
-            .pop(Expense.fromJson(data as Map<String, dynamic>));
+            .pop(ExpenseSaved(Expense.fromJson(data as Map<String, dynamic>)));
       case ApiFailure(:final error):
         setState(() {
           _saving = false;
@@ -140,12 +180,7 @@ class _ExpenseFormState extends State<ExpenseForm> {
                   ),
                 ],
                 const SizedBox(height: 24),
-                PrimaryButton(
-                  label: 'Add expense',
-                  loadingLabel: 'Adding…',
-                  loading: _saving,
-                  onPressed: _submit,
-                ),
+                _actions(),
               ],
             ),
           ),
@@ -155,22 +190,66 @@ class _ExpenseFormState extends State<ExpenseForm> {
   }
 
   Widget _header() {
+    final title = Text(
+      _isEdit ? 'Edit expense' : 'Add expense',
+      style: GoogleFonts.ibmPlexSans(
+        fontSize: 22,
+        fontWeight: FontWeight.w700,
+        color: AppColors.ink,
+      ),
+    );
     return Row(
       children: [
         Expanded(
-          child: Text(
-            'Add expense',
-            style: GoogleFonts.ibmPlexSans(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: AppColors.ink,
-            ),
-          ),
+          child: _isEdit
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'EXPENSE #${widget.expense!.id}',
+                      style: AppText.eyebrow(),
+                    ),
+                    const SizedBox(height: 2),
+                    title,
+                  ],
+                )
+              : title,
         ),
         IconButton(
           tooltip: 'Close',
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    );
+  }
+
+  Widget _actions() {
+    if (!_isEdit) {
+      return PrimaryButton(
+        label: 'Add expense',
+        loadingLabel: 'Adding\u2026',
+        loading: _saving,
+        onPressed: _submit,
+      );
+    }
+    return Row(
+      children: [
+        TextButton.icon(
+          onPressed: _saving
+              ? null
+              : () => Navigator.of(context).pop(const ExpenseDeleteRequested()),
+          icon: const Icon(Icons.delete_outline),
+          label: const Text('Delete'),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: PrimaryButton(
+            label: 'Save changes',
+            loadingLabel: 'Saving\u2026',
+            loading: _saving,
+            onPressed: _submit,
+          ),
         ),
       ],
     );

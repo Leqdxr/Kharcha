@@ -79,6 +79,7 @@ class ExpenseCard extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
+                      flex: 3,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -93,10 +94,12 @@ class ExpenseCard extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          Row(
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               CategoryPill(expense.category),
-                              const SizedBox(width: 10),
                               Text(
                                 date,
                                 style: AppText.mono(
@@ -110,9 +113,20 @@ class ExpenseCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      amount,
-                      style: AppText.mono(size: 16, weight: FontWeight.w600),
+                    // Takes at most 2/5 of the row; huge amounts shrink to fit.
+                    Flexible(
+                      flex: 2,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          amount,
+                          style: AppText.mono(
+                            size: 16,
+                            weight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
