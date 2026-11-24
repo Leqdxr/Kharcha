@@ -13,6 +13,7 @@ import { EmptyState } from "~/components/empty-state/empty-state";
 import { ExpenseList } from "~/components/expense-list/expense-list";
 import { Navbar } from "~/components/navbar/navbar";
 import { SummaryCards } from "~/components/summary-cards/summary-cards";
+import { UndoToast } from "~/components/undo-toast/undo-toast";
 import { api } from "~/lib/api";
 import { getToken, getUser, saveAuth } from "~/lib/auth";
 import { formatMonth, shiftMonth, sortExpenses, today } from "~/lib/format";
@@ -119,8 +120,32 @@ export default component$(() => {
   const editing = useSignal<Expense | null>(null);
   const editingBudget = useSignal(false);
   const search = useSignal("");
+  // A deleted expense waiting 5 seconds for Undo before the DELETE is sent
+  const pendingDelete = useSignal<{ expense: Expense; timer: number } | null>(
+    null,
+  );
+
+  const sendDelete = $(async (expense: Expense) => {
+    const res = await api.del(`/expenses/${expense.id}`);
+    if (!res.ok) {
+      notice.value = `Couldn't delete "${expense.title}". ${res.error.message}`;
+      if (expense.date.startsWith(month.value)) {
+        expenses.value = sortExpenses([...expenses.value, expense]);
+      }
+    }
+  });
+
+  // Send the waiting DELETE now (before reloading or deleting another one).
+  const flushDelete = $(async () => {
+    const pending = pendingDelete.value;
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    pendingDelete.value = null;
+    await sendDelete(pending.expense);
+  });
 
   const loadMonth = $(async () => {
+    await flushDelete();
     status.value = "loading";
     const [list, totals] = await Promise.all([
       api.get<Expense[]>(`/expenses?month=${month.value}`),
@@ -185,12 +210,20 @@ export default component$(() => {
 
   const deleteExpense = $(async (expense: Expense) => {
     notice.value = "";
-    const res = await api.del(`/expenses/${expense.id}`);
-    if (!res.ok) {
-      notice.value = `Couldn't delete the expense. ${res.error.message}`;
-      return;
-    }
+    await flushDelete();
     expenses.value = expenses.value.filter((e) => e.id !== expense.id);
+    const timer = window.setTimeout(() => {
+      if (pendingDelete.value?.expense.id === expense.id) flushDelete();
+    }, 5000);
+    pendingDelete.value = { expense, timer };
+  });
+
+  const undoDelete = $(() => {
+    const pending = pendingDelete.value;
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    pendingDelete.value = null;
+    expenses.value = sortExpenses([...expenses.value, pending.expense]);
   });
 
   const isCurrentMonth = month.value === today().slice(0, 7);
@@ -306,6 +339,13 @@ export default component$(() => {
           onClose$={() => (editing.value = null)}
           onSaved$={saveExpense}
           onDelete$={deleteExpense}
+        />
+      )}
+
+      {pendingDelete.value && (
+        <UndoToast
+          title={pendingDelete.value.expense.title}
+          onUndo$={undoDelete}
         />
       )}
 
