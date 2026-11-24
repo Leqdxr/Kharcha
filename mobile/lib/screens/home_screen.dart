@@ -1,0 +1,370 @@
+import 'dart:async';
+
+import 'package:google_fonts/google_fonts.dart';
+import 'package:material_ui/material_ui.dart';
+
+import '../format.dart';
+import '../models/expense.dart';
+import '../models/summary.dart';
+import '../models/user.dart';
+import '../services/api.dart';
+import '../services/auth_storage.dart';
+import '../theme.dart';
+import '../widgets/budget_dialog.dart';
+import '../widgets/expense_form.dart';
+import '../widgets/expenses_tab.dart';
+import '../widgets/insights_tab.dart';
+import 'login_screen.dart';
+
+enum _Status { loading, ready, error }
+
+/// The logged-in app: Expenses and Insights tabs for one month, with a
+/// bottom bar and a red + button. Holds the month's data for both tabs.
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  User? _user;
+  DateTime _month = thisMonth();
+  List<Expense> _expenses = [];
+  Summary? _summary;
+  _Status _status = _Status.loading;
+  String _errorMessage = '';
+  int _tab = 0;
+
+  /// A swiped-away expense waiting 5 seconds for Undo before the DELETE.
+  Expense? _pendingDelete;
+  Timer? _deleteTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    AuthStorage.getUser().then((user) {
+      if (mounted) setState(() => _user = user);
+    });
+    _load();
+  }
+
+  @override
+  void dispose() {
+    // Leaving the screen counts as "time ran out".
+    _flushDelete();
+    super.dispose();
+  }
+
+  /// Loads the month's expenses and summary. With [refresh] (pull to
+  /// refresh) the current data stays on screen and a failure only shows a
+  /// snackbar.
+  Future<void> _load({bool refresh = false}) async {
+    await _flushDelete();
+    if (!mounted) return;
+    if (!refresh) setState(() => _status = _Status.loading);
+
+    final month = monthKey(_month);
+    final [list, summary] = await Future.wait([
+      Api.get('/expenses?month=$month'),
+      Api.get('/summary?month=$month'),
+    ]);
+    if (!mounted) return;
+
+    if (list case ApiSuccess(data: final List data)) {
+      if (summary case ApiSuccess(data: final Map<String, dynamic> json)) {
+        setState(() {
+          _expenses = [
+            for (final e in data) Expense.fromJson(e as Map<String, dynamic>),
+          ];
+          _summary = Summary.fromJson(json);
+          _status = _Status.ready;
+        });
+        return;
+      }
+    }
+
+    final error = [list, summary].whereType<ApiFailure>().firstOrNull?.error;
+    final message = error?.message ?? 'Something went wrong. Try again.';
+    if (refresh && _status == _Status.ready) {
+      _showSnackBar(message);
+    } else {
+      setState(() {
+        _status = _Status.error;
+        _errorMessage = error?.isNetworkError ?? false
+            ? message
+            : 'Couldn’t load your expenses. $message';
+      });
+    }
+  }
+
+  void _changeMonth(DateTime month) {
+    setState(() => _month = month);
+    _load();
+  }
+
+  Future<void> _logOut() async {
+    await _flushDelete();
+    // Tell the backend to drop the token, but log out locally either way.
+    await Api.post('/logout');
+    await AuthStorage.clear();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
+  }
+
+  Future<void> _addExpense() async {
+    final result = await showExpenseForm(context);
+    if (result is! ExpenseSaved || !mounted) return;
+    final expense = result.expense;
+    // Added to another month: show that month.
+    if (!expense.date.startsWith(monthKey(_month))) {
+      _changeMonth(parseMonth(expense.date.substring(0, 7)));
+    } else {
+      setState(() => _expenses = sortExpenses([..._expenses, expense]));
+    }
+    _showSnackBar('Expense added');
+  }
+
+  Future<void> _editExpense(Expense expense) async {
+    final result = await showExpenseForm(context, expense: expense);
+    if (!mounted) return;
+    switch (result) {
+      case ExpenseSaved(expense: final saved):
+        final others = _expenses.where((e) => e.id != saved.id);
+        setState(() {
+          // Moved to another month: it leaves this list.
+          _expenses = saved.date.startsWith(monthKey(_month))
+              ? sortExpenses([...others, saved])
+              : others.toList();
+        });
+        _showSnackBar('Expense updated');
+      case ExpenseDeleteRequested():
+        _deleteExpense(expense);
+      case null:
+        break;
+    }
+  }
+
+  /// Removes the row now and sends the DELETE after 5 seconds, unless the
+  /// user taps Undo first.
+  void _deleteExpense(Expense expense) {
+    // Send any earlier waiting delete now. Not awaited: a swiped row must
+    // leave the list straight away.
+    _flushDelete();
+    setState(() {
+      _expenses = _expenses.where((e) => e.id != expense.id).toList();
+    });
+    _pendingDelete = expense;
+    _deleteTimer = Timer(const Duration(seconds: 5), _flushDelete);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Deleted “${expense.title}”'),
+          duration: const Duration(seconds: 5),
+          persist: false,
+          action: SnackBarAction(
+            label: 'Undo',
+            textColor: AppColors.white,
+            onPressed: _undoDelete,
+          ),
+        ),
+      );
+  }
+
+  void _undoDelete() {
+    final expense = _pendingDelete;
+    if (expense == null) return;
+    _deleteTimer?.cancel();
+    _pendingDelete = null;
+    setState(() => _expenses = sortExpenses([..._expenses, expense]));
+  }
+
+  /// Sends the waiting DELETE now. Puts the row back if it fails.
+  Future<void> _flushDelete() async {
+    final expense = _pendingDelete;
+    if (expense == null) return;
+    _deleteTimer?.cancel();
+    _pendingDelete = null;
+
+    final res = await Api.delete('/expenses/${expense.id}');
+    if (res case ApiFailure(:final error) when mounted) {
+      if (expense.date.startsWith(monthKey(_month))) {
+        setState(() => _expenses = sortExpenses([..._expenses, expense]));
+      }
+      _showSnackBar('Couldn’t delete “${expense.title}”. ${error.message}');
+    }
+  }
+
+  Future<void> _editBudget() async {
+    final user = await showBudgetDialog(context, _summary?.budget);
+    if (user == null || !mounted) return;
+    final summary = _summary!;
+    setState(() {
+      _user = user;
+      _summary = Summary(
+        previousMonth: summary.previousMonth,
+        previousTotal: summary.previousTotal,
+        budget: user.monthlyBudget,
+      );
+    });
+    await AuthStorage.saveUser(user);
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ready = _status == _Status.ready;
+    return Scaffold(
+      floatingActionButton: ready && _tab == 0 ? _addButton() : null,
+      bottomNavigationBar: _BottomBar(
+        index: _tab,
+        onChanged: (i) => setState(() => _tab = i),
+      ),
+      body: SafeArea(
+        bottom: false,
+        child: switch (_status) {
+          _Status.loading => const Center(child: CircularProgressIndicator()),
+          _Status.error => _errorState(),
+          _Status.ready when _tab == 0 => ExpensesTab(
+            user: _user,
+            month: _month,
+            expenses: _expenses,
+            summary: _summary!,
+            onMonthChanged: _changeMonth,
+            onRefresh: () => _load(refresh: true),
+            onAdd: _addExpense,
+            onEdit: _editExpense,
+            onDelete: _deleteExpense,
+            onEditBudget: _editBudget,
+            onLogOut: _logOut,
+          ),
+          _Status.ready => InsightsTab(
+            month: _month,
+            expenses: _expenses,
+            summary: _summary!,
+            onMonthChanged: _changeMonth,
+            onRefresh: () => _load(refresh: true),
+          ),
+        },
+      ),
+    );
+  }
+
+  Widget _addButton() {
+    return SizedBox.square(
+      dimension: 60,
+      child: FloatingActionButton(
+        tooltip: 'Add expense',
+        shape: const CircleBorder(),
+        elevation: 6,
+        onPressed: _addExpense,
+        child: const Icon(Icons.add, size: 28),
+      ),
+    );
+  }
+
+  Widget _errorState() {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_outlined,
+              size: 48,
+              color: AppColors.muted,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.onest(fontSize: 16, color: AppColors.muted),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: _load,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Expenses / Insights, the active one in red.
+class _BottomBar extends StatelessWidget {
+  const _BottomBar({required this.index, required this.onChanged});
+
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  static const _items = [
+    (icon: Icons.receipt_long, label: 'Expenses'),
+    (icon: Icons.bar_chart, label: 'Insights'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        border: Border(top: BorderSide(color: AppColors.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 68,
+          child: Row(
+            children: [
+              for (final (i, item) in _items.indexed)
+                Expanded(
+                  child: Semantics(
+                    selected: i == index,
+                    button: true,
+                    child: InkWell(
+                      onTap: () => onChanged(i),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            item.icon,
+                            size: 22,
+                            color: i == index ? AppColors.red : AppColors.muted,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            item.label,
+                            style: GoogleFonts.onest(
+                              fontSize: 12,
+                              fontWeight: i == index
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                              color: i == index
+                                  ? AppColors.red
+                                  : AppColors.muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

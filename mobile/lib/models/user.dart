@@ -1,19 +1,33 @@
 class User {
-  const User({required this.id, required this.name, required this.email});
+  const User({
+    required this.id,
+    required this.name,
+    required this.email,
+    this.monthlyBudget,
+  });
 
   final int id;
   final String name;
   final String email;
+
+  /// Rupees per month, or null when no budget is set.
+  final int? monthlyBudget;
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] as int,
       name: json['name'] as String,
       email: json['email'] as String,
+      monthlyBudget: (json['monthly_budget'] as num?)?.toInt(),
     );
   }
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'email': email};
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'email': email,
+    'monthly_budget': monthlyBudget,
+  };
 
   /// Up to two letters, e.g. "Aagaman Koirala" -> "AK".
   String get initials {

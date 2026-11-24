@@ -2,131 +2,158 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../format.dart';
-import '../models/expense.dart';
+import '../models/summary.dart';
 import '../theme.dart';
 
-/// The red "Spent this month" card, with the entry count and the biggest
-/// category underneath. Pass only this month's expenses.
+/// The red card: "Spent in November", the total, the comparison with last
+/// month and the budget bar. Tapping the budget part opens the budget dialog.
 class SummaryCard extends StatelessWidget {
-  const SummaryCard({super.key, required this.expenses});
+  const SummaryCard({
+    super.key,
+    required this.month,
+    required this.total,
+    required this.summary,
+    required this.onEditBudget,
+  });
 
-  final List<Expense> expenses;
+  final DateTime month;
+
+  /// Total of the month's expenses (without one waiting to be deleted).
+  final double total;
+  final Summary summary;
+  final VoidCallback onEditBudget;
 
   @override
   Widget build(BuildContext context) {
-    final total = expenses.fold<double>(0, (sum, e) => sum + e.amount);
+    final small = GoogleFonts.onest(fontSize: 13, color: AppColors.redTint);
+    final pct = percentChange(total, summary.previousTotal);
+    final previousName = formatMonthName(parseMonth(summary.previousMonth));
 
-    final byCategory = <String, double>{};
-    for (final e in expenses) {
-      byCategory[e.category] = (byCategory[e.category] ?? 0) + e.amount;
+    final IconData compareIcon;
+    final String compareText;
+    if (pct == null) {
+      compareIcon = Icons.remove;
+      compareText = 'First month of data';
+    } else {
+      compareIcon = pct <= 0 ? Icons.arrow_downward : Icons.arrow_upward;
+      compareText =
+          '${pct.abs()}% ${pct <= 0 ? 'less' : 'more'} than $previousName';
     }
-    MapEntry<String, double>? biggest;
-    for (final entry in byCategory.entries) {
-      if (biggest == null || entry.value > biggest.value) biggest = entry;
-    }
 
-    final labelStyle = GoogleFonts.onest(
-      fontSize: 13,
-      color: AppColors.white.withValues(alpha: 0.8),
-    );
-    final valueStyle = GoogleFonts.onest(
-      fontSize: 15,
-      fontWeight: FontWeight.w600,
-      color: AppColors.white,
-    );
-    final count = expenses.length;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.red,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Spent this month', style: labelStyle.copyWith(fontSize: 14)),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              formatMoney(total),
-              style: AppText.mono(
-                size: 32,
-                weight: FontWeight.w600,
-                color: AppColors.white,
+    // Material (not a Container) so the budget's tap ripple shows on the red.
+    return Material(
+      color: AppColors.red,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Spent in ${formatMonthName(month)}', style: small),
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                formatMoney(total),
+                style: AppText.mono(
+                  size: 32,
+                  weight: FontWeight.w600,
+                  color: AppColors.white,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Divider(color: AppColors.white.withValues(alpha: 0.25)),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _Stat(
-                  label: 'Entries',
-                  value: Text('$count', style: valueStyle),
-                  labelStyle: labelStyle,
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(compareIcon, size: 14, color: AppColors.white),
+                const SizedBox(width: 4),
+                Text(
+                  compareText,
+                  style: small.copyWith(color: AppColors.white),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: _Stat(
-                  label: 'Biggest category',
-                  labelStyle: labelStyle,
-                  value: biggest == null
-                      ? Text('None yet', style: valueStyle)
-                      : Text.rich(
-                          TextSpan(
-                            text: '${biggest.key}  ',
-                            style: valueStyle,
-                            children: [
-                              TextSpan(
-                                text: formatMoney(biggest.value),
-                                style: AppText.mono(
-                                  size: 13,
-                                  color: AppColors.white.withValues(
-                                    alpha: 0.85,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            _budget(small),
+          ],
+        ),
       ),
     );
   }
-}
 
-class _Stat extends StatelessWidget {
-  const _Stat({
-    required this.label,
-    required this.value,
-    required this.labelStyle,
-  });
+  Widget _budget(TextStyle small) {
+    final budget = summary.budget;
 
-  final String label;
-  final Widget value;
-  final TextStyle labelStyle;
+    if (budget == null) {
+      return Semantics(
+        button: true,
+        child: InkWell(
+          onTap: onEditBudget,
+          borderRadius: BorderRadius.circular(8),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Row(
+              children: [
+                const Icon(Icons.add, size: 18, color: AppColors.white),
+                const SizedBox(width: 6),
+                Text(
+                  'Set a monthly budget',
+                  style: small.copyWith(
+                    color: AppColors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: labelStyle),
-        const SizedBox(height: 4),
-        value,
-      ],
+    final left = budget - total;
+    final used = budget > 0 ? total / budget : (total > 0 ? 1.0 : 0.0);
+    final usedPct = (used * 100).round();
+    final note = left >= 0
+        ? '$usedPct% of ${formatMoney(budget)} budget · ${formatMoney(left)} left'
+        : '${formatMoney(-left)} over budget';
+
+    return Semantics(
+      button: true,
+      label: 'Monthly budget. $note. Tap to edit.',
+      excludeSemantics: true,
+      child: InkWell(
+        onTap: onEditBudget,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: used.clamp(0, 1).toDouble(),
+                  minHeight: 8,
+                  backgroundColor: AppColors.redDark,
+                  color: left >= 0 ? AppColors.white : AppColors.redTint,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: Text(note, style: small)),
+                  const Icon(
+                    Icons.edit_outlined,
+                    size: 16,
+                    color: AppColors.redTint,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

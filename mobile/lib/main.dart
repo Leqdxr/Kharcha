@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
-import 'screens/expenses_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'services/api.dart';
 import 'services/auth_storage.dart';
@@ -56,7 +56,7 @@ class _StartScreenState extends State<StartScreen> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) =>
-            token == null ? const LoginScreen() : const ExpensesScreen(),
+            token == null ? const LoginScreen() : const HomeScreen(),
       ),
     );
   }

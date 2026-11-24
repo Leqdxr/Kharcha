@@ -6,7 +6,7 @@ import '../services/auth_storage.dart';
 import '../theme.dart';
 import '../widgets/auth_layout.dart';
 import '../widgets/form_fields.dart';
-import 'expenses_screen.dart';
+import 'home_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -53,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute<void>(builder: (_) => const ExpensesScreen()),
+          MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
           (_) => false,
         );
       case ApiFailure(:final error):

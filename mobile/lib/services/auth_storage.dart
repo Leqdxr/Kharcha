@@ -15,6 +15,10 @@ class AuthStorage {
     await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
   }
 
+  /// Replaces the saved user, e.g. after the budget changes.
+  static Future<void> saveUser(User user) =>
+      _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+
   static Future<String?> getToken() => _storage.read(key: _tokenKey);
 
   static Future<User?> getUser() async {
