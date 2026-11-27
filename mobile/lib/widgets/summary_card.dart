@@ -30,10 +30,11 @@ class SummaryCard extends StatelessWidget {
     final pct = percentChange(total, summary.previousTotal);
     final previousName = formatMonthName(parseMonth(summary.previousMonth));
 
-    final IconData compareIcon;
+    // No arrow when there is nothing to compare with.
+    final IconData? compareIcon;
     final String compareText;
     if (pct == null) {
-      compareIcon = Icons.remove;
+      compareIcon = null;
       compareText = 'First month of data';
     } else {
       compareIcon = pct <= 0 ? Icons.arrow_downward : Icons.arrow_upward;
@@ -77,8 +78,10 @@ class SummaryCard extends StatelessWidget {
             const SizedBox(height: 6),
             Row(
               children: [
-                Icon(compareIcon, size: 14, color: AppColors.white),
-                const SizedBox(width: 4),
+                if (compareIcon != null) ...[
+                  Icon(compareIcon, size: 14, color: AppColors.white),
+                  const SizedBox(width: 4),
+                ],
                 Text(
                   compareText,
                   style: small.copyWith(color: AppColors.white),

@@ -13,7 +13,6 @@ type SummaryCardsProps = {
 
 const ARROW_DOWN = "M12 5v14M6 13l6 6 6-6";
 const ARROW_UP = "M12 19V5M6 11l6-6 6 6";
-const DASH = "M5 12h14";
 
 export const SummaryCards = component$<SummaryCardsProps>((props) => {
   useStylesScoped$(`
@@ -154,7 +153,8 @@ export const SummaryCards = component$<SummaryCardsProps>((props) => {
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   // Compared with last month
-  let compareIcon = DASH;
+  // No arrow when there is nothing to compare with
+  let compareIcon: string | null = null;
   let compareText = "First month of data";
   if (summary.previous_total > 0) {
     const pct = Math.round(
@@ -199,18 +199,20 @@ export const SummaryCards = component$<SummaryCardsProps>((props) => {
         <span class="label">Spent in {formatMonth(month, "short")}</span>
         <span class="big">{formatMoney(total)}</span>
         <span class="compare">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            aria-hidden="true"
-          >
-            <path d={compareIcon} />
-          </svg>
+          {compareIcon && (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d={compareIcon} />
+            </svg>
+          )}
           {compareText}
         </span>
       </div>
