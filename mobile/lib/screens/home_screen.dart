@@ -44,11 +44,20 @@ class _HomeScreenState extends State<HomeScreen> {
   final _udharoTab = GlobalKey<UdharoTabState>();
   final _taxTab = GlobalKey<TaxTabState>();
 
+  /// Reloads when the app comes back to the front, so changes made on the
+  /// web (a stopped repeat, a new expense) show up here.
+  late final AppLifecycleListener _lifecycle;
+
   @override
   void initState() {
     super.initState();
     // Dates follow the calendar setting, so redraw when the user changes.
     currentUser.addListener(_onUserChanged);
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        if (_status == _Status.ready) _load(refresh: true);
+      },
+    );
     _loadUser();
     _load();
   }
@@ -56,6 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     currentUser.removeListener(_onUserChanged);
+    _lifecycle.dispose();
     super.dispose();
   }
 
@@ -204,6 +214,9 @@ class _HomeScreenState extends State<HomeScreen> {
     switch (res) {
       case ApiSuccess():
         _showSnackBar('Expense deleted');
+        // Deleting a repeat's last expense stops the repeat, so the
+        // upcoming bills can change.
+        if (expense.recurringExpenseId != null) _load(refresh: true);
       case ApiFailure(:final error):
         setState(() => _expenses = sortExpenses([..._expenses, expense]));
         _showSnackBar('Couldn’t delete “${expense.title}”. ${error.message}');
