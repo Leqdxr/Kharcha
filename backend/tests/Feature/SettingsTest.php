@@ -19,6 +19,7 @@ class SettingsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('calendar', 'bs')
             ->assertJsonPath('ssf_contributor', false)
+            ->assertJsonPath('fiscal_year_view', true)
             ->assertJsonPath('payment_methods', User::PAYMENT_METHODS);
     }
 
@@ -30,10 +31,12 @@ class SettingsTest extends TestCase
         $this->putJson('/api/settings', [
             'calendar' => 'ad',
             'ssf_contributor' => true,
+            'fiscal_year_view' => false,
             'payment_methods' => ['cash', 'esewa'],
         ])->assertOk()
             ->assertJsonPath('calendar', 'ad')
             ->assertJsonPath('ssf_contributor', true)
+            ->assertJsonPath('fiscal_year_view', false)
             ->assertJsonPath('payment_methods', ['cash', 'esewa']);
 
         $this->getJson('/api/user')->assertJsonPath('calendar', 'ad')->assertJsonPath('payment_methods', ['cash', 'esewa']);
@@ -57,9 +60,10 @@ class SettingsTest extends TestCase
         $this->putJson('/api/settings', [
             'calendar' => 'nepali',
             'ssf_contributor' => 'maybe',
+            'fiscal_year_view' => 'sometimes',
             'payment_methods' => ['cash', 'paypal', 'cash'],
         ])->assertUnprocessable()
-            ->assertJsonValidationErrors(['calendar', 'ssf_contributor', 'payment_methods.1', 'payment_methods.2']);
+            ->assertJsonValidationErrors(['calendar', 'ssf_contributor', 'fiscal_year_view', 'payment_methods.1', 'payment_methods.2']);
     }
 
     public function test_settings_need_login(): void

@@ -12,7 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'monthly_budget', 'calendar', 'ssf_contributor', 'payment_methods'])]
+#[Fillable(['name', 'email', 'password', 'monthly_budget', 'calendar', 'ssf_contributor', 'fiscal_year_view', 'payment_methods'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -29,6 +29,7 @@ class User extends Authenticatable
     protected $attributes = [
         'calendar' => 'bs',
         'ssf_contributor' => false,
+        'fiscal_year_view' => true,
         'payment_methods' => '["cash","esewa","khalti","bank_card","mobile_banking"]',
     ];
 
@@ -44,6 +45,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'monthly_budget' => 'integer',
             'ssf_contributor' => 'boolean',
+            'fiscal_year_view' => 'boolean',
             'payment_methods' => 'array',
         ];
     }

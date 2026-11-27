@@ -17,6 +17,7 @@ class SettingsController extends Controller
         $data = $request->validate([
             'calendar' => ['sometimes', 'required', Rule::in(['bs', 'ad'])],
             'ssf_contributor' => 'sometimes|required|boolean',
+            'fiscal_year_view' => 'sometimes|required|boolean',
             'payment_methods' => 'sometimes|present|array',
             'payment_methods.*' => ['distinct', Rule::in(User::PAYMENT_METHODS)],
         ]);
