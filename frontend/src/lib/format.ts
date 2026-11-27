@@ -22,6 +22,23 @@ function parseDate(date: string): Date {
   return new Date(year, month - 1, day);
 }
 
+// BS month names as the designs spell them. The library does the date
+// conversion; only the names come from here, so web and mobile match.
+const BS_MONTHS = [
+  "Baisakh",
+  "Jestha",
+  "Asar",
+  "Shrawan",
+  "Bhadra",
+  "Asoj",
+  "Kartik",
+  "Mangsir",
+  "Poush",
+  "Magh",
+  "Falgun",
+  "Chaitra",
+];
+
 // "2026-11-26" -> "10 Mangsir 2083" (BS) or "26 Nov 2026" (AD).
 // Without the year: "10 Mangsir" or "26 Nov".
 export function formatDate(
@@ -31,7 +48,9 @@ export function formatDate(
 ): string {
   const d = parseDate(date);
   if (calendar === "bs") {
-    return NepaliDate.fromAD(d).format(withYear ? "D MMMM YYYY" : "D MMMM");
+    const bs = NepaliDate.fromAD(d).getBS(); // month is 0-based
+    const dayMonth = `${bs.date} ${BS_MONTHS[bs.month]}`;
+    return withYear ? `${dayMonth} ${bs.year}` : dayMonth;
   }
   return d.toLocaleDateString("en-GB", {
     day: "numeric",
