@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\GoalController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SummaryController;
@@ -27,4 +28,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/udharos/{udharo}/settle', [UdharoController::class, 'settle']);
     Route::post('/udharos/{udharo}/unsettle', [UdharoController::class, 'unsettle']);
     Route::apiResource('udharos', UdharoController::class)->except('show');
+    Route::post('/goals/{goal}/deposit', [GoalController::class, 'deposit']);
+    Route::apiResource('goals', GoalController::class)->except('show');
 });

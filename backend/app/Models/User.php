@@ -58,6 +58,11 @@ class User extends Authenticatable
         return $this->hasMany(Income::class);
     }
 
+    public function goals(): HasMany
+    {
+        return $this->hasMany(Goal::class);
+    }
+
     public function udharos(): HasMany
     {
         return $this->hasMany(Udharo::class);
