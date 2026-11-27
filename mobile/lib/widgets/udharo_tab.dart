@@ -189,16 +189,6 @@ class UdharoTabState extends State<UdharoTab> {
             ],
             selected: {_list},
             onSelectionChanged: (s) => setState(() => _list = s.first),
-            style: SegmentedButton.styleFrom(
-              selectedBackgroundColor: AppColors.surface,
-              selectedForegroundColor: AppColors.ink,
-              foregroundColor: AppColors.muted,
-              side: const BorderSide(color: AppColors.line),
-              textStyle: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
           ),
           const SizedBox(height: 8),
           if (shown.isEmpty)

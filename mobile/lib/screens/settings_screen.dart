@@ -229,13 +229,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
       selected: {user.calendar},
       onSelectionChanged: (s) => _save({'calendar': s.first}),
-      style: SegmentedButton.styleFrom(
-        selectedBackgroundColor: AppColors.surface,
-        selectedForegroundColor: AppColors.ink,
-        foregroundColor: AppColors.muted,
-        side: const BorderSide(color: AppColors.line),
-        textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
-      ),
     );
   }
 

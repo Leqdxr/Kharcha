@@ -152,6 +152,20 @@ ThemeData buildTheme() {
       backgroundColor: AppColors.red,
       foregroundColor: AppColors.white,
     ),
+    // Two-way toggles (Owe you / You owe, BS / AD): the chosen side is
+    // solid red with white text, the other white, so it's clear which is on.
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: SegmentedButton.styleFrom(
+        backgroundColor: AppColors.white,
+        foregroundColor: AppColors.ink,
+        selectedBackgroundColor: AppColors.red,
+        selectedForegroundColor: AppColors.white,
+        side: const BorderSide(color: AppColors.inputBorder),
+        minimumSize: const Size(48, 48),
+        textStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    ),
     chipTheme: ChipThemeData(
       backgroundColor: AppColors.white,
       selectedColor: AppColors.ink,
