@@ -51,17 +51,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// PUT /settings with the changed fields, then show the saved user.
+  /// Counts saves, so only the newest reply is used when several are on
+  /// their way (e.g. BS, AD, BS tapped quickly).
+  int _saves = 0;
+
+  /// Shows the change at once, then saves it with PUT /settings. If saving
+  /// fails, the old setting comes back.
   Future<void> _save(Map<String, Object> changes) async {
+    final before = currentUser.value;
+    if (before == null) return;
+    currentUser.value = User.fromJson({...before.toJson(), ...changes});
+
+    final save = ++_saves;
     final res = await Api.put('/settings', changes);
-    if (!mounted) return;
+    if (save != _saves) return;
     switch (res) {
       case ApiSuccess(data: final Map<String, dynamic> json):
         await setCurrentUser(User.fromJson(json));
       case ApiSuccess():
         break;
       case ApiFailure(:final error):
-        _showSnackBar('Couldn’t save. ${error.message}');
+        currentUser.value = before;
+        if (mounted) _showSnackBar('Couldn’t save. ${error.message}');
     }
   }
 
