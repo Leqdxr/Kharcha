@@ -30,6 +30,9 @@ export type User = {
   monthly_budget: number | null;
   calendar: Calendar;
   ssf_contributor: boolean;
+  // On: income lists show the Nepali fiscal year. Off: the calendar year.
+  // The tax estimate always uses the fiscal year.
+  fiscal_year_view: boolean;
   payment_methods: PaymentMethod[];
 };
 

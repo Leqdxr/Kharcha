@@ -31,6 +31,20 @@ function slabLabel(slab: TaxSummary["slabs"][number]): string {
   return `${slab.from / 100000}–${lakh(slab.to)} · ${pct}`;
 }
 
+// The incomes in the listed year: the fiscal year, or this calendar year
+// when the fiscal year view is off (a setting on the mobile app).
+function listedIncomes(
+  all: Income[],
+  data: TaxSummary,
+  fiscalYearView: boolean,
+): Income[] {
+  const year = new Date().getFullYear();
+  const [start, end] = fiscalYearView
+    ? [data.fiscal_year.start, data.fiscal_year.end]
+    : [`${year}-01-01`, `${year}-12-31`];
+  return all.filter((i) => i.date >= start && i.date <= end);
+}
+
 // Quote a CSV field when it has a comma, quote or line break.
 function csvField(value: string | number): string {
   const text = String(value);
@@ -365,9 +379,8 @@ export default component$(() => {
       status.value = "error";
       return;
     }
-    const { start, end } = totals.data.fiscal_year;
     summary.value = totals.data;
-    incomes.value = list.data.filter((i) => i.date >= start && i.date <= end);
+    incomes.value = list.data;
     status.value = "ready";
   });
 
@@ -392,9 +405,10 @@ export default component$(() => {
   const exportCsv = $(() => {
     const data = summary.value;
     if (!data) return;
+    const fiscalYearView = user.value?.fiscal_year_view ?? true;
     const rows = [
       ["Date (AD)", "Date (BS)", "Title", "Type", "Gross", "TDS", "Received"],
-      ...incomes.value.map((i) => [
+      ...listedIncomes(incomes.value, data, fiscalYearView).map((i) => [
         i.date,
         formatDate(i.date, "bs"),
         i.title,
@@ -408,13 +422,21 @@ export default component$(() => {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `kharcha-income-${data.fiscal_year.label.replace("/", "-")}.csv`;
+    const period = fiscalYearView
+      ? `fy-${data.fiscal_year.label.replace("/", "-")}`
+      : String(new Date().getFullYear());
+    link.download = `kharcha-income-${period}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   });
 
   const calendar = user.value?.calendar ?? "bs";
+  const fiscalYearView = user.value?.fiscal_year_view ?? true;
   const data = summary.value;
+  const shown = data ? listedIncomes(incomes.value, data, fiscalYearView) : [];
+  // Totals of the listed rows (the estimate's totals are always the fiscal year)
+  const shownGross = shown.reduce((sum, i) => sum + i.amount, 0);
+  const shownTds = shown.reduce((sum, i) => sum + i.tds_amount, 0);
 
   return (
     <main>
@@ -436,7 +458,7 @@ export default component$(() => {
               type="button"
               class="btn-secondary"
               onClick$={exportCsv}
-              disabled={incomes.value.length === 0}
+              disabled={shown.length === 0}
             >
               <svg
                 width="18"
@@ -539,16 +561,19 @@ export default component$(() => {
           <div class="content">
             <section class="card incomes" aria-labelledby="income-heading-list">
               <div class="section-head">
-                <h2 id="income-heading-list">Income this year</h2>
+                <h2 id="income-heading-list">
+                  {fiscalYearView
+                    ? "Income this fiscal year"
+                    : `Income in ${new Date().getFullYear()}`}
+                </h2>
                 <span class="count">
-                  {incomes.value.length}{" "}
-                  {incomes.value.length === 1 ? "entry" : "entries"}
+                  {shown.length} {shown.length === 1 ? "entry" : "entries"}
                 </span>
               </div>
-              {incomes.value.length === 0 ? (
+              {shown.length === 0 ? (
                 <p class="empty">
-                  No income yet this fiscal year. Add your salary or a payment
-                  to see your estimate.
+                  No income yet this {fiscalYearView ? "fiscal " : ""}year. Add
+                  your salary or a payment to see your estimate.
                 </p>
               ) : (
                 <div class="scroll">
@@ -572,7 +597,7 @@ export default component$(() => {
                       </tr>
                     </thead>
                     <tbody>
-                      {incomes.value.map((income) => (
+                      {shown.map((income) => (
                         <tr key={income.id}>
                           <td class="date number">
                             {formatDate(income.date, calendar)}
@@ -630,13 +655,15 @@ export default component$(() => {
                       <tr class="total-row">
                         <td colSpan={2}>Total so far</td>
                         <td class="right number">
-                          {data.totals.gross.toLocaleString("en-IN")}
+                          {shownGross.toLocaleString("en-IN")}
                         </td>
                         <td class="right number tds">
-                          {data.totals.tds.toLocaleString("en-IN")}
+                          {shownTds.toLocaleString("en-IN")}
                         </td>
                         <td class="right number">
-                          {data.totals.received.toLocaleString("en-IN")}
+                          {(
+                            Math.round((shownGross - shownTds) * 100) / 100
+                          ).toLocaleString("en-IN")}
                         </td>
                         <td />
                       </tr>
