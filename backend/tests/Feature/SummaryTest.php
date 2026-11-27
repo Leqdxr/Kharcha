@@ -96,4 +96,45 @@ class SummaryTest extends TestCase
 
         $this->getJson('/api/summary?month=2026-1')->assertUnprocessable()->assertJsonValidationErrors('month');
     }
+
+    public function test_safe_to_spend_for_the_current_month(): void
+    {
+        // 27 November: 4 days left including today.
+        $this->travelTo('2026-11-27 12:00:00');
+        $user = User::factory()->create(['monthly_budget' => 20000]);
+        $this->addExpense($user, '2026-11-10', 10495);
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/summary')
+            ->assertOk()
+            ->assertJsonPath('days_left', 4)
+            ->assertJsonPath('safe_to_spend', 2376);
+    }
+
+    public function test_safe_to_spend_on_the_last_day_and_when_over_budget(): void
+    {
+        $this->travelTo('2026-11-30 12:00:00');
+        $user = User::factory()->create(['monthly_budget' => 5000]);
+        $this->addExpense($user, '2026-11-10', 4000);
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/summary')->assertJsonPath('days_left', 1)->assertJsonPath('safe_to_spend', 1000);
+
+        $this->addExpense($user, '2026-11-30', 2000);
+        $this->getJson('/api/summary')->assertJsonPath('safe_to_spend', 0);
+    }
+
+    public function test_safe_to_spend_is_null_without_a_budget_or_for_other_months(): void
+    {
+        $this->travelTo('2026-11-27 12:00:00');
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/summary')->assertJsonPath('days_left', 4)->assertJsonPath('safe_to_spend', null);
+
+        $user->update(['monthly_budget' => 20000]);
+        $this->getJson('/api/summary?month=2026-10')
+            ->assertJsonPath('days_left', null)
+            ->assertJsonPath('safe_to_spend', null);
+    }
 }
