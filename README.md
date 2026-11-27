@@ -1,6 +1,8 @@
 # Kharcha
 
-Kharcha is a simple personal expense tracker. Users create an account, log in, and record their daily expenses with a title, amount, category, date and an optional note. Each month gets its own view: the total compared with last month, a monthly budget with a progress bar, where the money went by category, and the list of expenses grouped by day.
+Kharcha is a personal expense tracker made for Nepal. Users create an account, log in, and record their daily expenses with a title, amount, category, payment method, date and an optional note. Each month gets its own view: the total compared with last month, a monthly budget with how much is safe to spend today, where the money went by category, and the list of expenses grouped by day.
+
+It also keeps track of income and the TDS cut from it (with an estimate of the year's tax), money lent to and borrowed from friends (udharo), savings goals and monthly bills. Dates can be shown in Bikram Sambat (BS) or AD.
 
 The project is split into three apps:
 
@@ -20,9 +22,23 @@ The project is split into three apps:
 - Expense list grouped by day, filtered by category chips and (on the web) a search box
 - Asks for confirmation before deleting an expense or removing the budget
 - Amounts shown in Nepali Rupees (Rs.)
-- Each user can only see and change their own expenses
+- Each user can only see and change their own data
 - Responsive web layout down to phone width
-- Native Android app with Expenses and Insights tabs, keeping you logged in between launches
+- Native Android app with Expenses, Insights, Udharo and Tax tabs, keeping you logged in between launches
+
+**Nepal features (v3)**
+
+- **BS or AD dates**: dates are shown in Bikram Sambat ("10 Mangsir 2083") or AD ("26 Nov 2026"). The choice is saved on the account, so web and mobile match. Dates are always stored and sent as AD, and monthly views stay on AD months
+- **Payment method** on each expense: Cash, eSewa, Khalti, Bank card or Mobile banking (Settings chooses which ones show up)
+- **Quick add** chips: Tea 25, Bus fare 30, Lunch 150, Momo 180, Phone recharge 500
+- **Repeating bills**: "Repeat every month" creates the expense again on the same day each month. The mobile home shows the next three as "Upcoming bills"
+- **Safe to spend today**: what is left of the budget, divided by the days left in the month
+- **Tax & TDS**: add income (salary, service fees, rent, interest, dividends) with the TDS filled in from the rate, see what you may get back or still owe for the fiscal year, how it was worked out slab by slab, and export the year's income as CSV (web)
+- **Udharo**: who owes you and whom you owe, Settle with Undo, and Split a bill (each friend owes you an equal whole-rupee share; your share becomes an expense)
+- **Savings goals** (mobile): progress, how much to save a month to make it, + Rs. 500 and "Add money". Money in goals doesn't count as spending
+- **Settings** (mobile): calendar, budget, goals, payment methods, SSF contributor and PAN number. The PAN stays on the phone and is never sent to the API
+
+> **Tax numbers are estimates only, not tax advice.** Every tax number (fiscal year dates, slabs, the SSF rule and the TDS rates for FY 2083/84) lives in one file, `backend/config/tax.php`, so next year's budget is a one-file change.
 
 ## Tech Stack
 
@@ -38,21 +54,26 @@ The project is split into three apps:
 ```
 Kharcha/
 ├── backend/                  Laravel API
-│   ├── app/Http/Controllers/ Auth, Expense, Summary and Budget controllers
-│   ├── app/Models/           User, Expense
+│   ├── app/Http/Controllers/ Auth, Expense, Summary, Budget, Settings, Income,
+│   │                         TaxSummary, Udharo, Goal and RecurringExpense
+│   ├── app/Models/           User, Expense, Income, Udharo, Goal, RecurringExpense
+│   ├── app/Services/         TaxEstimator, RecurringExpenses
+│   ├── config/tax.php        Fiscal year, tax slabs, SSF rule, TDS rates
 │   ├── database/migrations/  Database tables
 │   ├── routes/api.php        API routes
 │   └── tests/Feature/        PHPUnit feature tests
 ├── frontend/                 Qwik app
 │   ├── src/components/       UI components
-│   ├── src/lib/              API client, auth helpers, types, formatting
-│   └── src/routes/           Pages: /, /login, /register, /expenses
+│   ├── src/lib/              API client, auth helpers, types, formatting,
+│   │                         quick add presets
+│   └── src/routes/           Pages: /, /login, /register, and inside (app)/
+│                             (logged in): /expenses, /tax, /udharo
 └── mobile/                   Flutter app
-    ├── lib/models/           User, Expense, Summary
-    ├── lib/services/         API client, secure token storage
-    ├── lib/screens/          Login, Register, Home (Expenses and Insights tabs)
+    ├── lib/models/           User, Expense, Summary, Income, Udharo, Goal
+    ├── lib/services/         API client, secure token and PAN storage, session
+    ├── lib/screens/          Login, Register, Home (4 tabs), Goals, Settings
     └── lib/widgets/          Tabs, month switcher, summary card, expense row,
-                              add/edit sheet, budget dialog, form fields
+                              add/edit, income and udharo sheets, form fields
 ```
 
 ## Requirements
@@ -77,6 +98,16 @@ GRANT ALL PRIVILEGES ON kharcha.* TO 'kharcha'@'localhost';
 GRANT ALL PRIVILEGES ON kharcha_test.* TO 'kharcha'@'localhost';
 FLUSH PRIVILEGES;
 ```
+
+If you already have the `kharcha` database, you only need the test database. Log in as root (`sudo mariadb`) and run:
+
+```sql
+CREATE DATABASE kharcha_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL PRIVILEGES ON kharcha_test.* TO 'kharcha'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+Laravel connects over TCP to `127.0.0.1`, which MariaDB can treat as a different host from `localhost`. If your `kharcha` user was created as `'kharcha'@'127.0.0.1'`, use that in the `GRANT` instead. The same goes for the command line: `mariadb -h 127.0.0.1 -u kharcha -p kharcha`.
 
 ### 2. Backend
 
@@ -159,21 +190,42 @@ See [`mobile/README.md`](mobile/README.md) for finding your IP, troubleshooting,
 
 All endpoints are under `/api`. Protected endpoints need the header `Authorization: Bearer <token>`, using the token returned by register or login. They only ever read or change the logged-in user's own data.
 
-| Method | Endpoint                    | Auth | Description                                         |
-| ------ | --------------------------- | ---- | --------------------------------------------------- |
-| POST   | `/register`                 | No   | Create an account                                   |
-| POST   | `/login`                    | No   | Log in and get a token                              |
-| GET    | `/user`                     | Yes  | Get the logged-in user (includes `monthly_budget`)  |
-| POST   | `/logout`                   | Yes  | Revoke the current token                            |
-| GET    | `/expenses`                 | Yes  | List all the user's expenses, newest first          |
-| GET    | `/expenses?month=YYYY-MM`   | Yes  | List one month's expenses, newest first             |
-| POST   | `/expenses`                 | Yes  | Create an expense                                   |
-| PUT    | `/expenses/{id}`            | Yes  | Update an expense                                   |
-| DELETE | `/expenses/{id}`            | Yes  | Delete an expense                                   |
-| GET    | `/summary?month=YYYY-MM`    | Yes  | Totals for a month (default: the current month)     |
-| PUT    | `/budget`                   | Yes  | Set or clear the monthly budget                     |
+| Method | Endpoint                           | Auth | Description                                                             |
+| ------ | ---------------------------------- | ---- | ----------------------------------------------------------------------- |
+| POST   | `/register`                        | No   | Create an account                                                       |
+| POST   | `/login`                           | No   | Log in and get a token                                                  |
+| GET    | `/user`                            | Yes  | The logged-in user, with `monthly_budget` and the settings              |
+| POST   | `/logout`                          | Yes  | Revoke the current token                                                |
+| PUT    | `/settings`                        | Yes  | Change `calendar`, `ssf_contributor` and/or `payment_methods`           |
+| GET    | `/expenses`                        | Yes  | List all expenses, newest first (creates due repeating bills first)     |
+| GET    | `/expenses?month=YYYY-MM`          | Yes  | List one month's expenses, newest first                                 |
+| POST   | `/expenses`                        | Yes  | Create an expense                                                       |
+| PUT    | `/expenses/{id}`                   | Yes  | Update an expense                                                       |
+| DELETE | `/expenses/{id}`                   | Yes  | Delete an expense                                                       |
+| GET    | `/summary?month=YYYY-MM`           | Yes  | Totals for a month (default: this month), `days_left`, `safe_to_spend`  |
+| PUT    | `/budget`                          | Yes  | Set or clear the monthly budget                                         |
+| GET    | `/recurring-expenses`              | Yes  | Repeating bills, next one first                                         |
+| POST   | `/recurring-expenses`              | Yes  | Repeat an expense every month: `{ "expense_id": 12 }`                   |
+| DELETE | `/recurring-expenses/{id}`         | Yes  | Stop repeating (expenses already made stay)                             |
+| GET    | `/incomes`                         | Yes  | List incomes, newest first                                              |
+| POST   | `/incomes`                         | Yes  | Add an income                                                           |
+| PUT    | `/incomes/{id}`                    | Yes  | Update an income                                                        |
+| DELETE | `/incomes/{id}`                    | Yes  | Delete an income                                                        |
+| GET    | `/tax/summary`                     | Yes  | Income, TDS and the tax estimate for the current fiscal year            |
+| GET    | `/udharos`                         | Yes  | Unsettled udharo entries, newest first                                  |
+| POST   | `/udharos`                         | Yes  | Add an udharo                                                           |
+| PUT    | `/udharos/{id}`                    | Yes  | Update an udharo                                                        |
+| DELETE | `/udharos/{id}`                    | Yes  | Delete an udharo                                                        |
+| POST   | `/udharos/{id}/settle`             | Yes  | Mark it settled (hides it from the list)                                |
+| POST   | `/udharos/{id}/unsettle`           | Yes  | Undo a settle                                                           |
+| POST   | `/udharos/split`                   | Yes  | Split a bill you paid: friends' udharos plus your share as an expense   |
+| GET    | `/goals`                           | Yes  | List savings goals                                                      |
+| POST   | `/goals`                           | Yes  | Create a goal                                                           |
+| PUT    | `/goals/{id}`                      | Yes  | Update a goal                                                           |
+| DELETE | `/goals/{id}`                      | Yes  | Delete a goal                                                           |
+| POST   | `/goals/{id}/deposit`              | Yes  | Add money to a goal: `{ "amount": 500 }`                                |
 
-Validation errors return `422` with an `errors` object per field. Updating or deleting an expense that belongs to another user returns `403`.
+Validation errors return `422` with an `errors` object per field. Changing another user's row returns `403`. A missing or expired token returns `401`.
 
 ### Register
 
@@ -219,8 +271,11 @@ Validation rules:
 - `title` - required, text, up to 255 characters
 - `amount` - required, number, 0 or more
 - `category` - required, one of `Food`, `Travel`, `Bills`, `Other`
+- `payment_method` - optional, one of `cash`, `esewa`, `khalti`, `bank_card`, `mobile_banking`
 - `date` - required, a valid date (`YYYY-MM-DD`)
 - `note` - optional, text, up to 255 characters
+
+Expenses also return `recurring_expense_id`: set when the expense repeats every month.
 
 ### Monthly summary
 
@@ -245,6 +300,8 @@ GET /api/summary?month=2026-11
 }
 ```
 
+The response also has `days_left` (days left in the month including today, or `null` for other months) and `safe_to_spend` (what's left of the budget divided by `days_left`, rounded; `0` when over budget, `null` with no budget or for other months).
+
 `by_category` is sorted from highest to lowest and only lists categories with spending. `budget` is `null` when no budget is set.
 
 ### Monthly budget
@@ -255,6 +312,66 @@ PUT /api/budget
 ```
 
 `monthly_budget` must be present: a whole number from 0 to 100000000, or `null` to clear the budget. Returns the updated user.
+
+### Settings
+
+```json
+PUT /api/settings
+{ "calendar": "ad", "ssf_contributor": true, "payment_methods": ["cash", "esewa"] }
+```
+
+Send only the fields you want to change. `calendar` is `bs` or `ad`. Returns the updated user.
+
+### Income and the tax summary
+
+```json
+POST /api/incomes
+{
+  "title": "Acme Pvt Ltd",
+  "amount": 100000,
+  "type": "salary",
+  "tds_amount": 9000,
+  "date": "2026-08-15",
+  "note": "Shrawan salary"
+}
+```
+
+`type` is one of the keys in `config/tax.php`: `salary`, `service_pan`, `service_vat`, `rent`, `interest`, `dividend`. `tds_amount` can't be more than `amount`.
+
+`GET /api/tax/summary` works it out for the fiscal year in `config/tax.php`:
+
+- Projected salary = average monthly salary entered so far x 12
+- Taxable income = projected salary + all other income except interest and dividends (final withholding)
+- Tax = the slabs (the 1% slab is waived for SSF contributors)
+- `adjustable_tds_year_end` = average monthly salary TDS x 12 + TDS on the other non-final income
+- `result` = `adjustable_tds_year_end` - tax: positive means you may get money back, negative means you may still owe
+
+It also returns `types` (labels and rates), `totals`, `slabs` (one row per slab with `taxable`, `tax` and `waived`), `estimated_tax`, `effective_rate`, `tds_so_far` and `final_tds`.
+
+### Udharo and Split a bill
+
+```json
+POST /api/udharos
+{ "person": "Sujan", "amount": 500, "direction": "lent", "note": "Bus fare", "date": "2026-11-20" }
+```
+
+`direction` is `lent` (they owe you) or `borrowed` (you owe them).
+
+```json
+POST /api/udharos/split
+{ "title": "Pizza", "total": 1001.5, "friends": ["Sujan", "Priya"], "category": "Food" }
+```
+
+Everyone's share is the total divided by the number of people, rounded down to whole rupees for each friend. You take the remainder (here 333 each for Sujan and Priya, 335.50 for you). It creates one `lent` udharo per friend and your share as an expense, all in one transaction. `category` defaults to `Food`, and `date` (optional) defaults to today.
+
+### Goals
+
+```json
+POST /api/goals
+{ "name": "New laptop", "target": 120000, "target_date": "2027-06-01" }
+```
+
+`saved` starts at 0. Use `POST /api/goals/{id}/deposit` with `{ "amount": 500 }` to add money.
 
 ## Useful Commands
 
