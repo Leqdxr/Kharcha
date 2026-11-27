@@ -2,8 +2,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../theme.dart';
 
-/// "Are you sure?" dialog before deleting something. Returns true only when
-/// the user taps [confirmLabel].
+/// "Are you sure?" dialog before deleting something or logging out.
+/// Returns true only when the user taps [confirmLabel].
 Future<bool> confirmDelete(
   BuildContext context, {
   required String title,

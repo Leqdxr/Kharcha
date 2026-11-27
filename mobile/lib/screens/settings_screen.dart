@@ -10,6 +10,7 @@ import '../services/pan_storage.dart';
 import '../services/session.dart';
 import '../theme.dart';
 import '../widgets/budget_dialog.dart';
+import '../widgets/confirm_dialog.dart';
 import 'goals_screen.dart';
 import 'login_screen.dart';
 
@@ -102,6 +103,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _logOut() async {
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Log out?',
+      message: 'Are you sure you want to log out?',
+      confirmLabel: 'Log out',
+    );
+    if (!confirmed) return;
     // Tell the backend to drop the token, but log out locally either way.
     await Api.post('/logout');
     await AuthStorage.clear();

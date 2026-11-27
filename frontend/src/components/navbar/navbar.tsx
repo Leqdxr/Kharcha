@@ -6,6 +6,7 @@ import {
   useStylesScoped$,
 } from "@builder.io/qwik";
 import { Link, useLocation, useNavigate } from "@builder.io/qwik-city";
+import { ConfirmDialog } from "~/components/confirm-dialog/confirm-dialog";
 import { Logo } from "~/components/logo/logo";
 import { api } from "~/lib/api";
 import { clearAuth, getToken, saveAuth } from "~/lib/auth";
@@ -182,6 +183,8 @@ export const Navbar = component$(() => {
   const loc = useLocation();
   const user = useContext(UserContext);
   const loggingOut = useSignal(false);
+  // "Are you sure you want to log out?" is showing
+  const confirmingLogout = useSignal(false);
 
   const logout = $(async () => {
     loggingOut.value = true;
@@ -265,7 +268,7 @@ export const Navbar = component$(() => {
             <button
               type="button"
               class="btn-secondary logout"
-              onClick$={logout}
+              onClick$={() => (confirmingLogout.value = true)}
               disabled={loggingOut.value}
             >
               {loggingOut.value ? "Logging out…" : "Log out"}
@@ -273,6 +276,18 @@ export const Navbar = component$(() => {
           </div>
         )}
       </div>
+      {confirmingLogout.value && (
+        <ConfirmDialog
+          title="Log out?"
+          message="Are you sure you want to log out?"
+          confirmLabel="Log out"
+          onCancel$={() => (confirmingLogout.value = false)}
+          onConfirm$={async () => {
+            confirmingLogout.value = false;
+            await logout();
+          }}
+        />
+      )}
     </header>
   );
 });

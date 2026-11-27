@@ -14,7 +14,7 @@ type ConfirmDialogProps = {
   onCancel$: QRL<() => void>;
 };
 
-// "Are you sure?" dialog before deleting something. Escape cancels.
+// "Are you sure?" dialog before deleting something or logging out. Escape cancels.
 export const ConfirmDialog = component$<ConfirmDialogProps>((props) => {
   useStylesScoped$(`
     .modal {
