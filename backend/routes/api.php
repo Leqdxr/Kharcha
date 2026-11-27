@@ -5,6 +5,7 @@ use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\GoalController;
 use App\Http\Controllers\IncomeController;
+use App\Http\Controllers\RecurringExpenseController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SummaryController;
 use App\Http\Controllers\TaxSummaryController;
@@ -19,6 +20,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', fn (Request $request) => $request->user());
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::apiResource('expenses', ExpenseController::class)->except('show');
+    Route::apiResource('recurring-expenses', RecurringExpenseController::class)->only(['index', 'store', 'destroy']);
     Route::get('/summary', SummaryController::class);
     Route::put('/budget', BudgetController::class);
     Route::put('/settings', SettingsController::class);

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
-#[Fillable(['title', 'amount', 'category', 'payment_method', 'date', 'note'])]
+#[Fillable(['title', 'amount', 'category', 'payment_method', 'date', 'note', 'recurring_expense_id'])]
 class Expense extends Model
 {
     public const CATEGORIES = ['Food', 'Travel', 'Bills', 'Other'];

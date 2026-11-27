@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Expense;
 use App\Models\User;
+use App\Services\RecurringExpenses;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -12,9 +13,11 @@ use Illuminate\Validation\Rule;
 
 class ExpenseController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, RecurringExpenses $recurring): JsonResponse
     {
         $request->validate(['month' => 'nullable|date_format:Y-m']);
+
+        $recurring->createDue($request->user());
 
         $expenses = $request->user()->expenses()
             ->when($request->query('month'), fn ($query, $month) => $query->inMonth(Carbon::parse($month.'-01')))
