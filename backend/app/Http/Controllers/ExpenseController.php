@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Expense;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -55,13 +56,9 @@ class ExpenseController extends Controller
             'title' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'category' => ['required', Rule::in(Expense::CATEGORIES)],
+            'payment_method' => ['nullable', Rule::in(User::PAYMENT_METHODS)],
             'date' => 'required|date',
             'note' => 'nullable|string|max:255',
         ]);
-    }
-
-    private function authorizeOwner(Request $request, Expense $expense): void
-    {
-        abort_if($expense->user_id !== $request->user()->id, 403, 'This expense does not belong to you.');
     }
 }

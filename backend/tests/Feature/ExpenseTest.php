@@ -54,6 +54,25 @@ class ExpenseTest extends TestCase
         ])->assertCreated()->assertJsonPath('note', null);
     }
 
+    public function test_payment_method_is_saved_and_validated(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+        $expense = [
+            'title' => 'Momo',
+            'amount' => 180,
+            'category' => 'Food',
+            'date' => '2026-11-22',
+        ];
+
+        $this->postJson('/api/expenses', $expense + ['payment_method' => 'esewa'])
+            ->assertCreated()
+            ->assertJsonPath('payment_method', 'esewa');
+        $this->postJson('/api/expenses', $expense)->assertCreated()->assertJsonPath('payment_method', null);
+        $this->postJson('/api/expenses', $expense + ['payment_method' => 'paypal'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('payment_method');
+    }
+
     public function test_list_returns_only_own_expenses_newest_first(): void
     {
         $user = User::factory()->create();
