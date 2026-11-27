@@ -56,6 +56,18 @@ export const Navbar = component$(() => {
       align-items: center;
       gap: 12px 28px;
     }
+    /* Rendered by <Link>, so it needs :global() like the tabs. */
+    .bar :global(.home) {
+      margin: -4px -6px;
+      padding: 4px 6px;
+      border-radius: 8px;
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .bar :global(.home:hover) {
+      background: var(--surface);
+      color: var(--ink);
+    }
     nav {
       display: flex;
       gap: 4px;
@@ -197,7 +209,13 @@ export const Navbar = component$(() => {
   return (
     <header>
       <div class="bar">
-        <Logo />
+        <Link
+          href="/expenses/"
+          class="home"
+          aria-label="Kharcha, go to Expenses"
+        >
+          <Logo />
+        </Link>
 
         <nav aria-label="Main">
           {TABS.map((tab) => (
