@@ -57,4 +57,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Income::class);
     }
+
+    public function udharos(): HasMany
+    {
+        return $this->hasMany(Udharo::class);
+    }
 }
