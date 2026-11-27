@@ -9,9 +9,11 @@ import '../services/api.dart';
 import '../theme.dart';
 import 'confirm_dialog.dart';
 import 'income_form.dart';
+import 'selection_bar.dart';
 
 /// The Tax tab: what you may get back (or owe) this fiscal year, the
-/// estimate behind it and the income so far. Swipe an income to delete it.
+/// estimate behind it and the income so far. Swipe an income to delete it,
+/// or hold one to select several and delete them together.
 class TaxTab extends StatefulWidget {
   const TaxTab({super.key});
 
@@ -23,6 +25,18 @@ class TaxTabState extends State<TaxTab> {
   TaxSummary? _summary;
   List<Income> _incomes = [];
   String? _error;
+
+  /// Ids of the ticked incomes. Holding a row starts selecting.
+  Set<int> _selected = {};
+
+  bool get _selecting => _selected.isNotEmpty;
+
+  void _toggle(Income income) {
+    setState(() {
+      _selected = {..._selected};
+      if (!_selected.remove(income.id)) _selected.add(income.id);
+    });
+  }
 
   @override
   void initState() {
@@ -45,6 +59,8 @@ class TaxTabState extends State<TaxTab> {
           _incomes = [
             for (final r in rows) Income.fromJson(r as Map<String, dynamic>),
           ].where((i) => _inFiscalYear(i, data)).toList();
+          // Forget ticks for incomes that are gone.
+          _selected = _selected.intersection({for (final i in _incomes) i.id});
         });
         return;
       }
@@ -69,18 +85,49 @@ class TaxTabState extends State<TaxTab> {
     }
   }
 
-  Future<void> _delete(Income income) async {
-    setState(
-      () => _incomes = _incomes.where((i) => i.id != income.id).toList(),
-    );
-    final res = await Api.delete('/incomes/${income.id}');
-    if (!mounted) return;
-    if (res case ApiFailure(:final error)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Couldn’t delete it. ${error.message}')),
-      );
+  /// Removes [chosen] from the list, deletes them, then reloads the
+  /// estimate. Failed ones come back with the reload.
+  Future<void> _delete(List<Income> chosen) async {
+    final ids = {for (final i in chosen) i.id};
+    setState(() {
+      _incomes = _incomes.where((i) => !ids.contains(i.id)).toList();
+      _selected = {};
+    });
+    var failed = 0;
+    for (final income in chosen) {
+      if (await Api.delete('/incomes/${income.id}') is ApiFailure) failed++;
     }
+    if (!mounted) return;
+    final message = failed > 0
+        ? 'Couldn’t delete $failed of ${chosen.length}. Try again.'
+        : chosen.length == 1
+        ? 'Income deleted'
+        : '${chosen.length} incomes deleted';
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
     _load();
+  }
+
+  Future<bool> _confirm(List<Income> chosen) {
+    final total = chosen.fold(0.0, (sum, i) => sum + i.amount);
+    final what = chosen.length == 1
+        ? '“${chosen.first.title}” (${formatMoney(total)})'
+        : '${chosen.length} incomes (${formatMoney(total)})';
+    return confirmDelete(
+      context,
+      title: chosen.length == 1
+          ? 'Delete this income?'
+          : 'Delete ${chosen.length} incomes?',
+      message: '$what will be deleted and your estimate updated.',
+    );
+  }
+
+  Future<void> _deleteSelected() async {
+    final chosen = _incomes.where((i) => _selected.contains(i.id)).toList();
+    if (chosen.isNotEmpty && await _confirm(chosen) && mounted) {
+      _delete(chosen);
+    }
   }
 
   @override
@@ -116,6 +163,17 @@ class TaxTabState extends State<TaxTab> {
     final side = math.max(20.0, (width - 720) / 2);
     final total = _incomes.fold(0.0, (sum, i) => sum + i.amount);
 
+    // Back stops selecting instead of leaving the app.
+    return PopScope(
+      canPop: !_selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(() => _selected = {});
+      },
+      child: _content(summary, side, total),
+    );
+  }
+
+  Widget _content(TaxSummary summary, double side, double total) {
     return RefreshIndicator(
       color: AppColors.red,
       onRefresh: _load,
@@ -123,35 +181,49 @@ class TaxTabState extends State<TaxTab> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(side, 20, side, 120),
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Semantics(
-                header: true,
-                child: Text(
-                  'Tax & TDS',
-                  style: GoogleFonts.inter(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w700,
+          if (_selecting)
+            Transform.translate(
+              offset: const Offset(-12, 0),
+              child: SelectionBar(
+                count: _selected.length,
+                allSelected: _selected.length == _incomes.length,
+                onClose: () => setState(() => _selected = {}),
+                onSelectAll: () => setState(
+                  () => _selected = {for (final i in _incomes) i.id},
+                ),
+                onDelete: _deleteSelected,
+              ),
+            )
+          else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'Tax & TDS',
+                    style: GoogleFonts.inter(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'FY ${summary.fiscalYearLabel}',
+                    style: AppText.number(size: 13, weight: FontWeight.w600),
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  'FY ${summary.fiscalYearLabel}',
-                  style: AppText.number(size: 13, weight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
           const SizedBox(height: 12),
           _resultCard(summary),
           const SizedBox(height: 14),
@@ -187,6 +259,15 @@ class TaxTabState extends State<TaxTab> {
               ),
             ),
           for (final income in _incomes) _incomeRow(income, summary),
+          if (_incomes.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Text(
+                'Swipe left to delete, or hold to select several',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(fontSize: 13, color: AppColors.muted),
+              ),
+            ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(14),
@@ -350,70 +431,84 @@ class TaxTabState extends State<TaxTab> {
     final sub =
         '${formatDate(income.date, withYear: false)} · TDS ${formatNumber(income.tdsAmount)} (${type?.rateText ?? ''})';
 
+    final selected = _selected.contains(income.id);
     return Dismissible(
       key: ValueKey(income.id),
-      direction: DismissDirection.endToStart,
-      confirmDismiss: (_) => confirmDelete(
-        context,
-        title: 'Delete this income?',
-        message:
-            '“${income.title}” (${formatMoney(income.amount)}) will be deleted and your estimate updated.',
-      ),
-      onDismissed: (_) => _delete(income),
+      // No swiping while ticking rows.
+      direction: _selecting
+          ? DismissDirection.none
+          : DismissDirection.endToStart,
+      confirmDismiss: (_) => _confirm([income]),
+      onDismissed: (_) => _delete([income]),
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         color: AppColors.red,
         child: const Icon(Icons.delete_outline, color: AppColors.white),
       ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: AppColors.rowLine)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, size: 20, color: AppColors.inkSoft),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    income.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    sub,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: AppColors.muted,
-                    ),
-                  ),
-                ],
+      child: Semantics(
+        selected: _selecting ? selected : null,
+        onLongPressHint: 'Select',
+        child: InkWell(
+          // Tapping only ticks rows while selecting.
+          onTap: _selecting ? () => _toggle(income) : null,
+          onLongPress: () => _toggle(income),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: selected ? AppColors.redTint : null,
+              border: const Border(
+                bottom: BorderSide(color: AppColors.rowLine),
               ),
             ),
-            const SizedBox(width: 12),
-            Text(
-              formatNumber(income.amount),
-              style: AppText.number(weight: FontWeight.w600),
+            child: Row(
+              children: [
+                if (_selecting)
+                  SelectionCheck(selected: selected)
+                else
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, size: 20, color: AppColors.inkSoft),
+                  ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        income.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        sub,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  formatNumber(income.amount),
+                  style: AppText.number(weight: FontWeight.w600),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

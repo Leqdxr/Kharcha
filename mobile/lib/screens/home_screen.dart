@@ -223,6 +223,52 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  /// Deletes the ticked expenses after one confirmation. Returns true when
+  /// the user confirmed.
+  Future<bool> _deleteMany(List<Expense> chosen) async {
+    if (chosen.isEmpty) return false;
+    if (chosen.length == 1) {
+      if (!await _confirmDelete(chosen.first) || !mounted) return false;
+      _deleteExpense(chosen.first);
+      return true;
+    }
+    final total = chosen.fold(0.0, (sum, e) => sum + e.amount);
+    final confirmed = await confirmDelete(
+      context,
+      title: 'Delete ${chosen.length} expenses?',
+      message:
+          '${chosen.length} expenses (${formatMoney(total)}) will be deleted.',
+    );
+    if (!confirmed || !mounted) return false;
+
+    final ids = {for (final e in chosen) e.id};
+    setState(() {
+      _expenses = _expenses.where((e) => !ids.contains(e.id)).toList();
+    });
+    // One at a time: deleting the last expense of a repeat stops the
+    // repeat, and parallel deletes could each miss that.
+    final failed = <Expense>[];
+    for (final expense in chosen) {
+      if (await Api.delete('/expenses/${expense.id}') is ApiFailure) {
+        failed.add(expense);
+      }
+    }
+    if (!mounted) return true;
+
+    if (failed.isEmpty) {
+      _showSnackBar('${chosen.length} expenses deleted');
+    } else {
+      setState(() => _expenses = sortExpenses([..._expenses, ...failed]));
+      _showSnackBar(
+        'Couldn’t delete ${failed.length} of ${chosen.length}. Try again.',
+      );
+    }
+    if (chosen.any((e) => e.recurringExpenseId != null)) {
+      _load(refresh: true);
+    }
+    return true;
+  }
+
   Future<void> _editBudget() async {
     final user = await showBudgetDialog(context, _summary?.budget);
     if (user == null || !mounted) return;
@@ -273,6 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onEdit: _editExpense,
             confirmDelete: _confirmDelete,
             onDelete: _deleteExpense,
+            onDeleteMany: _deleteMany,
             onEditBudget: _editBudget,
             onOpenSettings: _openSettings,
             onOpenGoals: _openGoals,

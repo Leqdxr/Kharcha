@@ -5,11 +5,13 @@ import 'package:material_ui/material_ui.dart';
 import '../format.dart';
 import '../models/expense.dart';
 import '../theme.dart';
+import 'selection_bar.dart';
 
 /// One expense in the day-grouped list: icon, title, "Food · eSewa · note",
 /// amount.
-/// Tap to edit, swipe left to delete. [confirmDelete] asks first; [onDelete]
-/// runs only when the user confirms.
+/// Tap to edit, swipe left to delete, hold to start selecting. While
+/// [selecting], a checkbox replaces the icon and a tap ticks the row.
+/// [confirmDelete] asks first; [onDelete] runs only when the user confirms.
 class ExpenseRow extends StatelessWidget {
   const ExpenseRow({
     super.key,
@@ -17,12 +19,18 @@ class ExpenseRow extends StatelessWidget {
     required this.onTap,
     required this.confirmDelete,
     required this.onDelete,
+    required this.onLongPress,
+    this.selecting = false,
+    this.selected = false,
   });
 
   final Expense expense;
   final VoidCallback onTap;
   final Future<bool> Function() confirmDelete;
   final VoidCallback onDelete;
+  final VoidCallback onLongPress;
+  final bool selecting;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +46,10 @@ class ExpenseRow extends StatelessWidget {
 
     return Dismissible(
       key: ValueKey(expense.id),
-      direction: DismissDirection.endToStart,
+      // No swiping while ticking rows.
+      direction: selecting
+          ? DismissDirection.none
+          : DismissDirection.endToStart,
       confirmDismiss: (_) => confirmDelete(),
       onDismissed: (_) => onDelete(),
       background: Container(
@@ -51,7 +62,9 @@ class ExpenseRow extends StatelessWidget {
       child: Semantics(
         label: '${expense.title}, $sub, $amount',
         button: true,
+        selected: selecting ? selected : null,
         excludeSemantics: true,
+        onLongPressHint: 'Select',
         customSemanticsActions: {
           const CustomSemanticsAction(label: 'Delete'): () async {
             if (await confirmDelete()) onDelete();
@@ -59,26 +72,33 @@ class ExpenseRow extends StatelessWidget {
         },
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.rowLine)),
+            decoration: BoxDecoration(
+              color: selecting && selected ? AppColors.redTint : null,
+              border: const Border(
+                bottom: BorderSide(color: AppColors.rowLine),
+              ),
             ),
             child: Row(
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(12),
+                if (selecting)
+                  SelectionCheck(selected: selected)
+                else
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      categoryIcons[expense.category],
+                      size: 20,
+                      color: AppColors.inkSoft,
+                    ),
                   ),
-                  child: Icon(
-                    categoryIcons[expense.category],
-                    size: 20,
-                    color: AppColors.inkSoft,
-                  ),
-                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(

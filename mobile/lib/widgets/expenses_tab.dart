@@ -12,6 +12,7 @@ import '../theme.dart';
 import 'expense_row.dart';
 import 'logo.dart';
 import 'month_switcher.dart';
+import 'selection_bar.dart';
 import 'summary_card.dart';
 
 const _filters = ['All', ...expenseCategories];
@@ -33,6 +34,7 @@ class ExpensesTab extends StatefulWidget {
     required this.onEdit,
     required this.confirmDelete,
     required this.onDelete,
+    required this.onDeleteMany,
     required this.onEditBudget,
     required this.onOpenSettings,
     required this.onOpenGoals,
@@ -53,6 +55,10 @@ class ExpensesTab extends StatefulWidget {
   final ValueChanged<Expense> onEdit;
   final Future<bool> Function(Expense) confirmDelete;
   final ValueChanged<Expense> onDelete;
+
+  /// Asks to confirm, then deletes the ticked expenses. Returns true when
+  /// they were deleted, so selecting can stop.
+  final Future<bool> Function(List<Expense>) onDeleteMany;
   final VoidCallback onEditBudget;
   final VoidCallback onOpenSettings;
   final VoidCallback onOpenGoals;
@@ -64,6 +70,37 @@ class ExpensesTab extends StatefulWidget {
 class _ExpensesTabState extends State<ExpensesTab> {
   String _filter = 'All';
 
+  /// Ids of the ticked expenses. Holding a row starts selecting.
+  Set<int> _selected = {};
+
+  bool get _selecting => _selected.isNotEmpty;
+
+  void _toggle(Expense expense) {
+    setState(() {
+      _selected = {..._selected};
+      if (!_selected.remove(expense.id)) _selected.add(expense.id);
+    });
+  }
+
+  Future<void> _deleteSelected() async {
+    final chosen = widget.expenses
+        .where((e) => _selected.contains(e.id))
+        .toList();
+    if (await widget.onDeleteMany(chosen) && mounted) {
+      setState(() => _selected = {});
+    }
+  }
+
+  @override
+  void didUpdateWidget(ExpensesTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Forget ticks for rows that left the list (deleted, other month).
+    final ids = {for (final e in widget.expenses) e.id};
+    if (!_selected.every(ids.contains)) {
+      _selected = _selected.intersection(ids);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Keep the content readable on wide screens (landscape, tablets).
@@ -71,22 +108,48 @@ class _ExpensesTabState extends State<ExpensesTab> {
     final side = math.max(20.0, (width - 720) / 2);
     final total = widget.expenses.fold(0.0, (sum, e) => sum + e.amount);
 
+    // Back stops selecting instead of leaving the app.
+    return PopScope(
+      canPop: !_selecting,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) setState(() => _selected = {});
+      },
+      child: _content(side, total),
+    );
+  }
+
+  Widget _content(double side, double total) {
     return Column(
       children: [
         Padding(
-          padding: EdgeInsets.fromLTRB(side, 12, side - 8, 0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Logo(size: 28),
-              IconButton(
-                tooltip: 'Settings',
-                icon: const Icon(Icons.settings_outlined),
-                color: AppColors.inkSoft,
-                onPressed: widget.onOpenSettings,
-              ),
-            ],
+          padding: EdgeInsets.fromLTRB(
+            _selecting ? side - 12 : side,
+            12,
+            side - 8,
+            0,
           ),
+          child: _selecting
+              ? SelectionBar(
+                  count: _selected.length,
+                  allSelected: _selected.length == widget.expenses.length,
+                  onClose: () => setState(() => _selected = {}),
+                  onSelectAll: () => setState(
+                    () => _selected = {for (final e in widget.expenses) e.id},
+                  ),
+                  onDelete: _deleteSelected,
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Logo(size: 28),
+                    IconButton(
+                      tooltip: 'Settings',
+                      icon: const Icon(Icons.settings_outlined),
+                      color: AppColors.inkSoft,
+                      onPressed: widget.onOpenSettings,
+                    ),
+                  ],
+                ),
         ),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: side - 8),
@@ -201,7 +264,12 @@ class _ExpensesTabState extends State<ExpensesTab> {
             padding: EdgeInsets.symmetric(horizontal: side),
             child: ExpenseRow(
               expense: expense,
-              onTap: () => widget.onEdit(expense),
+              selecting: _selecting,
+              selected: _selected.contains(expense.id),
+              onTap: _selecting
+                  ? () => _toggle(expense)
+                  : () => widget.onEdit(expense),
+              onLongPress: () => _toggle(expense),
               confirmDelete: () => widget.confirmDelete(expense),
               onDelete: () => widget.onDelete(expense),
             ),
@@ -210,7 +278,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
       Padding(
         padding: const EdgeInsets.only(top: 16),
         child: Text(
-          'Swipe left on an expense to delete it',
+          'Swipe left to delete, or hold to select several',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(fontSize: 13, color: AppColors.muted),
         ),
