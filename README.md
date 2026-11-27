@@ -20,7 +20,8 @@ The project is split into three apps:
 - Monthly budget with a progress bar and the amount left
 - "Where it went": spending per category, high to low
 - Expense list grouped by day, filtered by category chips and (on the web) a search box
-- Asks for confirmation before deleting an expense or removing the budget
+- Asks for confirmation before deleting an expense, removing the budget or logging out
+- On the phone: swipe a row left to delete it, or hold it to select several expenses (or incomes on the Tax tab) and delete them together
 - Amounts shown in Nepali Rupees (Rs.)
 - Each user can only see and change their own data
 - Responsive web layout down to phone width
@@ -31,12 +32,12 @@ The project is split into three apps:
 - **BS or AD dates**: dates are shown in Bikram Sambat ("10 Mangsir 2083") or AD ("26 Nov 2026"). The choice is saved on the account, so web and mobile match. Dates are always stored and sent as AD, and monthly views stay on AD months
 - **Payment method** on each expense: Cash, eSewa, Khalti, Bank card or Mobile banking (Settings chooses which ones show up)
 - **Quick add** chips: Tea 25, Bus fare 30, Lunch 150, Momo 180, Phone recharge 500
-- **Repeating bills**: "Repeat every month" creates the expense again on the same day each month. The mobile home shows the next three as "Upcoming bills"
+- **Repeating bills**: "Repeat every month" creates the expense again on the same day each month. The mobile home shows the next three as "Upcoming bills". Turning the switch off in the edit form stops the repeat, and so does deleting the repeat's last expense
 - **Safe to spend today**: what is left of the budget, divided by the days left in the month
 - **Tax & TDS**: add income (salary, service fees, rent, interest, dividends) with the TDS filled in from the rate, see what you may get back or still owe for the fiscal year, how it was worked out slab by slab, and export the year's income as CSV (web)
 - **Udharo**: who owes you and whom you owe, Settle with Undo, and Split a bill (each friend owes you an equal whole-rupee share; your share becomes an expense)
 - **Savings goals** (mobile): progress, how much to save a month to make it, + Rs. 500 and "Add money". Money in goals doesn't count as spending
-- **Settings** (mobile): calendar, budget, goals, payment methods, SSF contributor and PAN number. The PAN stays on the phone and is never sent to the API
+- **Settings** (mobile): calendar, Nepali fiscal year (on: the Tax tab lists Shrawan to Asar; off: January to December, and the web follows it too; the estimate always uses the fiscal year), budget, goals, payment methods, SSF contributor and PAN number. Changes show at once and save in the background. The PAN stays on the phone and is never sent to the API
 
 > **Tax numbers are estimates only, not tax advice.** Every tax number (fiscal year dates, slabs, the SSF rule and the TDS rates for FY 2083/84) lives in one file, `backend/config/tax.php`, so next year's budget is a one-file change.
 
@@ -196,12 +197,12 @@ All endpoints are under `/api`. Protected endpoints need the header `Authorizati
 | POST   | `/login`                           | No   | Log in and get a token                                                  |
 | GET    | `/user`                            | Yes  | The logged-in user, with `monthly_budget` and the settings              |
 | POST   | `/logout`                          | Yes  | Revoke the current token                                                |
-| PUT    | `/settings`                        | Yes  | Change `calendar`, `ssf_contributor` and/or `payment_methods`           |
+| PUT    | `/settings`                        | Yes  | Change `calendar`, `ssf_contributor`, `fiscal_year_view`, `payment_methods` |
 | GET    | `/expenses`                        | Yes  | List all expenses, newest first (creates due repeating bills first)     |
 | GET    | `/expenses?month=YYYY-MM`          | Yes  | List one month's expenses, newest first                                 |
 | POST   | `/expenses`                        | Yes  | Create an expense                                                       |
 | PUT    | `/expenses/{id}`                   | Yes  | Update an expense                                                       |
-| DELETE | `/expenses/{id}`                   | Yes  | Delete an expense                                                       |
+| DELETE | `/expenses/{id}`                   | Yes  | Delete an expense (the last one of a repeat also stops the repeat)      |
 | GET    | `/summary?month=YYYY-MM`           | Yes  | Totals for a month (default: this month), `days_left`, `safe_to_spend`  |
 | PUT    | `/budget`                          | Yes  | Set or clear the monthly budget                                         |
 | GET    | `/recurring-expenses`              | Yes  | Repeating bills, next one first                                         |
@@ -317,10 +318,10 @@ PUT /api/budget
 
 ```json
 PUT /api/settings
-{ "calendar": "ad", "ssf_contributor": true, "payment_methods": ["cash", "esewa"] }
+{ "calendar": "ad", "ssf_contributor": true, "fiscal_year_view": false, "payment_methods": ["cash", "esewa"] }
 ```
 
-Send only the fields you want to change. `calendar` is `bs` or `ad`. Returns the updated user.
+Send only the fields you want to change. `calendar` is `bs` or `ad`. `fiscal_year_view` (default `true`) chooses which year the apps list income for: the Nepali fiscal year, or the calendar year when `false`. `GET /tax/summary` always uses the fiscal year. Returns the updated user.
 
 ### Income and the tax summary
 
