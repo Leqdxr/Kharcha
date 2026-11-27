@@ -1,16 +1,43 @@
-import type { Expense } from "./types";
+import NepaliDate from "nepali-date-converter";
+import type { Calendar, Expense } from "./types";
 
 export function formatMoney(amount: number): string {
   return "Rs. " + amount.toLocaleString("en-IN");
 }
 
-
 // Today's date as YYYY-MM-DD in local time, for date inputs.
 export function today(): string {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${now.getFullYear()}-${month}-${day}`;
+  return toIsoDate(new Date());
+}
+
+function toIsoDate(d: Date): string {
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+// "2026-11-26" -> local Date
+function parseDate(date: string): Date {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+// "2026-11-26" -> "10 Mangsir 2083" (BS) or "26 Nov 2026" (AD).
+// Without the year: "10 Mangsir" or "26 Nov".
+export function formatDate(
+  date: string,
+  calendar: Calendar,
+  withYear = true,
+): string {
+  const d = parseDate(date);
+  if (calendar === "bs") {
+    return NepaliDate.fromAD(d).format(withYear ? "D MMMM YYYY" : "D MMMM");
+  }
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: withYear ? "numeric" : undefined,
+  });
 }
 
 // Newest first, same order as GET /expenses.
@@ -34,6 +61,13 @@ export function formatMonth(month: string, style: "long" | "short"): string {
   });
 }
 
+// "2026-11" -> "15 Kartik – 14 Mangsir": the BS dates the AD month covers.
+export function bsMonthRange(month: string): string {
+  const first = monthDate(month);
+  const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+  return `${formatDate(toIsoDate(first), "bs", false)} – ${formatDate(toIsoDate(last), "bs", false)}`;
+}
+
 // "2026-11", 1 -> "2026-12"
 export function shiftMonth(month: string, by: number): string {
   const d = monthDate(month);
@@ -41,12 +75,17 @@ export function shiftMonth(month: string, by: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-// "2026-11-24" -> "Today · 24 Nov" or "22 Nov"
-export function dayLabel(date: string): string {
-  const [year, month, day] = date.split("-").map(Number);
-  const label = new Date(year, month - 1, day).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-  });
+// "2026-11-24" -> "Today · 24 Nov" or "22 Nov" (or the BS date)
+export function dayLabel(date: string, calendar: Calendar): string {
+  const label = formatDate(date, calendar, false);
   return date === today() ? `Today · ${label}` : label;
+}
+
+// "Aagaman Koirala" -> "AK"
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
 }

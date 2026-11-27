@@ -1,5 +1,6 @@
 import {
   component$,
+  useContext,
   useSignal,
   useStylesScoped$,
   type QRL,
@@ -10,13 +11,24 @@ import {
   type Filter,
 } from "~/components/filter-chips/filter-chips";
 import { dayLabel, formatMoney } from "~/lib/format";
-import type { Expense } from "~/lib/types";
+import { PAYMENT_LABELS, type Expense } from "~/lib/types";
+import { UserContext } from "~/lib/user-context";
+
+// "Food · eSewa · Repeats monthly · note"
+function subLine(expense: Expense): string {
+  return [
+    expense.category,
+    expense.payment_method && PAYMENT_LABELS[expense.payment_method],
+    expense.recurring_expense_id !== null && "Repeats monthly",
+    expense.note,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 type ExpenseListProps = {
   // The month's expenses, newest first
   expenses: Expense[];
-  // Text from the header search box
-  search: string;
   onEdit$: QRL<(expense: Expense) => void>;
   onDelete$: QRL<(expense: Expense) => void>;
 };
@@ -29,9 +41,37 @@ export const ExpenseList = component$<ExpenseListProps>((props) => {
       border-radius: 12px;
       overflow: hidden;
     }
-    .chips {
+    .tools {
       padding: 16px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
       border-bottom: 1px solid var(--line);
+    }
+    .search {
+      position: relative;
+      flex: 0 1 260px;
+    }
+    .search svg {
+      position: absolute;
+      left: 12px;
+      top: 11px;
+    }
+    .search input {
+      width: 100%;
+      height: 40px;
+      padding: 0 14px 0 38px;
+      border: 1px solid var(--input-border);
+      border-radius: 20px;
+      background: var(--row-hover);
+      color: var(--ink);
+      font-size: 14px;
+    }
+    .search input:focus {
+      outline: 2px solid var(--red);
+      outline-offset: 1px;
     }
     .day {
       display: flex;
@@ -117,7 +157,10 @@ export const ExpenseList = component$<ExpenseListProps>((props) => {
         gap: 10px;
         padding: 10px 4px 10px 12px;
       }
-      .chips,
+      .search {
+        flex-basis: 100%;
+      }
+      .tools,
       .day {
         padding-left: 12px;
         padding-right: 12px;
@@ -126,8 +169,11 @@ export const ExpenseList = component$<ExpenseListProps>((props) => {
   `);
 
   const filter = useSignal<Filter>("All");
+  const search = useSignal("");
+  const user = useContext(UserContext);
+  const calendar = user.value?.calendar ?? "bs";
 
-  const query = props.search.trim().toLowerCase();
+  const query = search.value.trim().toLowerCase();
   const shown = props.expenses.filter(
     (e) =>
       (filter.value === "All" || e.category === filter.value) &&
@@ -146,8 +192,32 @@ export const ExpenseList = component$<ExpenseListProps>((props) => {
 
   return (
     <section class="card" aria-label="Expense list">
-      <div class="chips">
+      <div class="tools">
         <FilterChips active={filter} />
+        <div class="search" role="search">
+          <label for="search" class="visually-hidden">
+            Search expenses
+          </label>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--muted)"
+            stroke-width="2"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" />
+          </svg>
+          <input
+            id="search"
+            type="search"
+            placeholder="Search by title or note"
+            bind:value={search}
+          />
+        </div>
       </div>
 
       {shown.length === 0 && (
@@ -161,7 +231,7 @@ export const ExpenseList = component$<ExpenseListProps>((props) => {
       {days.map((day) => (
         <div key={day.date}>
           <div class="day">
-            <span>{dayLabel(day.date)}</span>
+            <span>{dayLabel(day.date, calendar)}</span>
             <span class="number">
               {formatMoney(day.items.reduce((sum, e) => sum + e.amount, 0))}
             </span>
@@ -174,11 +244,7 @@ export const ExpenseList = component$<ExpenseListProps>((props) => {
                 </span>
                 <div class="text">
                   <span class="title">{expense.title}</span>
-                  <span class="sub">
-                    {expense.note
-                      ? `${expense.category} · ${expense.note}`
-                      : expense.category}
-                  </span>
+                  <span class="sub">{subLine(expense)}</span>
                 </div>
                 <span class="amount">{formatMoney(expense.amount)}</span>
                 <div class="actions">

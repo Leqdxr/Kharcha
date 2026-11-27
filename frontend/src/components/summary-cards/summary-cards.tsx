@@ -1,12 +1,12 @@
 import { component$, useStylesScoped$, type QRL } from "@builder.io/qwik";
-import { formatMoney, formatMonth, today } from "~/lib/format";
+import { formatMoney, formatMonth } from "~/lib/format";
 import type { Category, Expense, Summary } from "~/lib/types";
 
 type SummaryCardsProps = {
   month: string; // YYYY-MM
   // The selected month's expenses (without one waiting to be deleted)
   expenses: Expense[];
-  // Gives the previous month's total and the budget
+  // Gives the previous month's total, the budget and the days left
   summary: Summary;
   onEditBudget$: QRL<() => void>;
 };
@@ -103,6 +103,16 @@ export const SummaryCards = component$<SummaryCardsProps>((props) => {
       font-size: 14px;
       color: var(--muted);
     }
+    .safe {
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .safe-amount {
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+    }
     .set-budget {
       align-self: flex-start;
       height: 44px;
@@ -163,22 +173,18 @@ export const SummaryCards = component$<SummaryCardsProps>((props) => {
   else if (budget === 0 && total > 0) budgetPct = 100;
   let budgetNote = "";
   if (budget !== null) {
-    if (left >= 0) {
-      budgetNote = `${formatMoney(left)} left`;
-      if (month === today().slice(0, 7)) {
-        const now = new Date();
-        const lastDay = new Date(
-          now.getFullYear(),
-          now.getMonth() + 1,
-          0,
-        ).getDate();
-        const daysLeft = lastDay - now.getDate();
-        budgetNote += ` · ${daysLeft} ${daysLeft === 1 ? "day" : "days"} to go`;
-      }
-    } else {
-      budgetNote = `${formatMoney(-left)} over budget`;
-    }
+    budgetNote =
+      left >= 0
+        ? `${formatMoney(left)} left`
+        : `Over budget by ${formatMoney(-left)}`;
   }
+
+  // Safe to spend today: what's left, spread over the days left (current month only).
+  const daysLeft = summary.days_left;
+  const safeToSpend =
+    budget !== null && left >= 0 && daysLeft
+      ? Math.round(left / daysLeft)
+      : null;
 
   // Where it went, high to low
   const byCategory = new Map<Category, number>();
@@ -254,6 +260,14 @@ export const SummaryCards = component$<SummaryCardsProps>((props) => {
               />
             </div>
             <span class="note">{budgetNote}</span>
+            {safeToSpend !== null && daysLeft && (
+              <span class="safe">
+                Safe to spend today{" "}
+                <strong class="safe-amount">{formatMoney(safeToSpend)}</strong>
+                {" · "}
+                {daysLeft} {daysLeft === 1 ? "day" : "days"} left this month
+              </span>
+            )}
           </>
         )}
       </div>

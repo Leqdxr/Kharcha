@@ -37,5 +37,8 @@
     "undici": "*",
     "vite": "7.3.7",
     "vite-tsconfig-paths": "^4.2.1"
+  },
+  "dependencies": {
+    "nepali-date-converter": "^3.4.2"
   }
 }

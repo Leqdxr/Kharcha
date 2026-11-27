@@ -15,7 +15,8 @@ import type { Expense, ExpenseInput } from "~/lib/types";
 type EditExpenseModalProps = {
   expense: Expense;
   onClose$: QRL<() => void>;
-  onSaved$: QRL<(expense: Expense) => void>;
+  // repeatChanged: a monthly repeat was started or stopped
+  onSaved$: QRL<(expense: Expense, repeatChanged: boolean) => void>;
   onDelete$: QRL<(expense: Expense) => void>;
 };
 
@@ -91,8 +92,10 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
     title: props.expense.title,
     amount: String(props.expense.amount),
     category: props.expense.category,
+    payment_method: props.expense.payment_method,
     date: props.expense.date,
     note: props.expense.note ?? "",
+    repeat: props.expense.recurring_expense_id !== null,
   });
   const errors = useSignal<Record<string, string>>({});
   const message = useSignal("");
@@ -111,12 +114,14 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
     errors.value = {};
     message.value = "";
 
-    const res = await api.put<Expense>(`/expenses/${props.expense.id}`, {
-      ...values,
-    });
-    saving.value = false;
+    const { repeat, ...expense } = values;
+    const res = await api.put<Expense>(
+      `/expenses/${props.expense.id}`,
+      expense,
+    );
 
     if (!res.ok) {
+      saving.value = false;
       errors.value = res.error.errors;
       if (Object.keys(res.error.errors).length === 0) {
         message.value = res.error.message;
@@ -124,7 +129,22 @@ export const EditExpenseModal = component$<EditExpenseModalProps>((props) => {
       return;
     }
 
-    await props.onSaved$(res.data);
+    // Start or stop repeating.
+    const ruleId = props.expense.recurring_expense_id;
+    const repeatChanged = repeat !== (ruleId !== null);
+    if (repeatChanged) {
+      const rule = repeat
+        ? await api.post("/recurring-expenses", { expense_id: res.data.id })
+        : await api.del(`/recurring-expenses/${ruleId}`);
+      if (!rule.ok) {
+        saving.value = false;
+        message.value = `Saved, but the repeat didn't change: ${rule.error.message}`;
+        return;
+      }
+    }
+    saving.value = false;
+
+    await props.onSaved$(res.data, repeatChanged);
   });
 
   return (

@@ -1,22 +1,23 @@
 import {
   $,
   component$,
+  useContext,
   useSignal,
   useStylesScoped$,
   useVisibleTask$,
 } from "@builder.io/qwik";
-import { useNavigate, type DocumentHead } from "@builder.io/qwik-city";
+import type { DocumentHead } from "@builder.io/qwik-city";
 import { AddExpenseForm } from "~/components/add-expense-form/add-expense-form";
 import { BudgetDialog } from "~/components/budget-dialog/budget-dialog";
 import { ConfirmDialog } from "~/components/confirm-dialog/confirm-dialog";
 import { EditExpenseModal } from "~/components/edit-expense-modal/edit-expense-modal";
 import { EmptyState } from "~/components/empty-state/empty-state";
 import { ExpenseList } from "~/components/expense-list/expense-list";
-import { Navbar } from "~/components/navbar/navbar";
 import { SummaryCards } from "~/components/summary-cards/summary-cards";
 import { api } from "~/lib/api";
-import { getToken, getUser, saveAuth } from "~/lib/auth";
+import { getToken, saveAuth } from "~/lib/auth";
 import {
+  bsMonthRange,
   formatMoney,
   formatMonth,
   shiftMonth,
@@ -24,6 +25,7 @@ import {
   today,
 } from "~/lib/format";
 import type { Expense, Summary, User } from "~/lib/types";
+import { UserContext } from "~/lib/user-context";
 
 export default component$(() => {
   useStylesScoped$(`
@@ -67,8 +69,20 @@ export default component$(() => {
       opacity: 0.35;
       cursor: not-allowed;
     }
-    h1 {
+    .title {
       margin: 0 8px;
+      min-width: 250px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+    .bs-range {
+      font-size: 14px;
+      color: var(--muted);
+    }
+    h1 {
+      margin: 0;
       min-width: 250px;
       text-align: center;
       font-size: 32px;
@@ -104,10 +118,13 @@ export default component$(() => {
         padding: 24px 16px 48px;
         gap: 24px;
       }
-      h1 {
+      .title {
         margin: 0;
         min-width: 0;
         flex: 1;
+      }
+      h1 {
+        min-width: 0;
         font-size: 24px;
       }
       .switcher {
@@ -116,8 +133,7 @@ export default component$(() => {
     }
   `);
 
-  const nav = useNavigate();
-  const user = useSignal<User | null>(null);
+  const user = useContext(UserContext);
   const month = useSignal(today().slice(0, 7)); // YYYY-MM
   const expenses = useSignal<Expense[]>([]);
   const summary = useSignal<Summary | null>(null);
@@ -125,7 +141,6 @@ export default component$(() => {
   const notice = useSignal("");
   const editing = useSignal<Expense | null>(null);
   const editingBudget = useSignal(false);
-  const search = useSignal("");
   // The expense waiting for "Delete this expense?" to be confirmed
   const confirming = useSignal<Expense | null>(null);
   const loadMonth = $(async () => {
@@ -159,18 +174,13 @@ export default component$(() => {
     editingBudget.value = false;
   });
 
-  // localStorage is only available in the browser.
+  // The layout has checked the login; load in the browser with the token.
   // eslint-disable-next-line qwik/no-use-visible-task
   useVisibleTask$(async () => {
-    if (!getToken()) {
-      await nav("/login", { replaceState: true });
-      return;
-    }
-    user.value = getUser();
     await loadMonth();
   });
 
-  const addExpense = $(async (expense: Expense) => {
+  const addExpense = $(async (expense: Expense, repeats: boolean) => {
     notice.value = "";
     // Added to another month: show that month.
     if (!expense.date.startsWith(month.value)) {
@@ -178,11 +188,21 @@ export default component$(() => {
       await loadMonth();
       return;
     }
+    // A new repeat may have added this and earlier months' bills.
+    if (repeats) {
+      await loadMonth();
+      return;
+    }
     expenses.value = sortExpenses([...expenses.value, expense]);
   });
 
-  const saveExpense = $((saved: Expense) => {
+  const saveExpense = $(async (saved: Expense, repeatChanged: boolean) => {
     notice.value = "";
+    if (repeatChanged) {
+      editing.value = null;
+      await loadMonth();
+      return;
+    }
     const others = expenses.value.filter((e) => e.id !== saved.id);
     // Moved to another month: it leaves this list.
     expenses.value = saved.date.startsWith(month.value)
@@ -207,8 +227,6 @@ export default component$(() => {
 
   return (
     <>
-      <Navbar user={user.value} search={search} />
-
       <main>
         <div class="month-bar">
           <div class="switcher">
@@ -230,7 +248,12 @@ export default component$(() => {
                 <path d="M15 6l-6 6 6 6" />
               </svg>
             </button>
-            <h1 aria-live="polite">{formatMonth(month.value, "long")}</h1>
+            <div class="title" aria-live="polite">
+              <h1>{formatMonth(month.value, "long")}</h1>
+              {user.value?.calendar === "bs" && (
+                <span class="bs-range">{bsMonthRange(month.value)}</span>
+              )}
+            </div>
             <button
               type="button"
               aria-label="Next month"
@@ -295,7 +318,6 @@ export default component$(() => {
               {expenses.value.length > 0 ? (
                 <ExpenseList
                   expenses={expenses.value}
-                  search={search.value}
                   onEdit$={(expense) => (editing.value = expense)}
                   onDelete$={(expense) => (confirming.value = expense)}
                 />

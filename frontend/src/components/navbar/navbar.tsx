@@ -1,32 +1,31 @@
 import {
   $,
   component$,
+  useContext,
   useSignal,
   useStylesScoped$,
-  type Signal,
 } from "@builder.io/qwik";
-import { useNavigate } from "@builder.io/qwik-city";
+import { Link, useLocation, useNavigate } from "@builder.io/qwik-city";
 import { Logo } from "~/components/logo/logo";
 import { api } from "~/lib/api";
-import { clearAuth } from "~/lib/auth";
-import type { User } from "~/lib/types";
+import { clearAuth, getToken, saveAuth } from "~/lib/auth";
+import { initials } from "~/lib/format";
+import type { Calendar, User } from "~/lib/types";
+import { UserContext } from "~/lib/user-context";
 
-// "Aagaman Koirala" -> "AK"
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase() ?? "")
-    .join("");
-}
+const TABS = [
+  { href: "/expenses/", label: "Expenses" },
+  { href: "/tax/", label: "Tax & TDS" },
+  { href: "/udharo/", label: "Udharo" },
+];
 
-type NavbarProps = {
-  user: User | null;
-  // Filters the expense list by title or note
-  search: Signal<string>;
-};
+const CALENDARS: { value: Calendar; label: string }[] = [
+  { value: "bs", label: "BS" },
+  { value: "ad", label: "AD" },
+];
 
-export const Navbar = component$<NavbarProps>((props) => {
+// Header on every logged-in page: logo, tabs, BS/AD switch, avatar, log out.
+export const Navbar = component$(() => {
   useStylesScoped$(`
     header {
       border-bottom: 1px solid var(--line);
@@ -38,37 +37,55 @@ export const Navbar = component$<NavbarProps>((props) => {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 16px 24px;
+      gap: 12px 28px;
     }
-    .search {
-      position: relative;
-      flex: 1 1 280px;
-      max-width: 440px;
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
     }
-    .search svg {
-      position: absolute;
-      left: 14px;
-      top: 13px;
-    }
-    .search input {
-      width: 100%;
-      height: 44px;
-      padding: 0 16px 0 42px;
-      border: 1px solid var(--input-border);
-      border-radius: 22px;
-      background: var(--row-hover);
-      color: var(--ink);
+    nav a {
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: #3d3835;
+      text-decoration: none;
       font-size: 15px;
+      font-weight: 500;
     }
-    .search input:focus {
-      outline: 2px solid var(--red);
-      outline-offset: 1px;
+    nav a:hover {
+      background: var(--surface);
+      color: #3d3835;
+    }
+    nav a[aria-current="page"] {
+      background: var(--red-tint);
+      color: var(--red-dark);
+      font-weight: 600;
     }
     .right {
       display: flex;
       align-items: center;
       gap: 12px;
       margin-left: auto;
+    }
+    .calendar {
+      display: flex;
+      border: 1px solid var(--input-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .calendar button {
+      height: 36px;
+      padding: 0 12px;
+      border: 0;
+      background: var(--white);
+      color: #3d3835;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .calendar button[aria-pressed="true"] {
+      background: var(--ink);
+      color: var(--white);
+      font-weight: 600;
     }
     .avatar {
       width: 40px;
@@ -91,15 +108,16 @@ export const Navbar = component$<NavbarProps>((props) => {
       .bar {
         padding: 12px 16px;
       }
-      .search {
+      nav {
         order: 1;
         flex-basis: 100%;
-        max-width: none;
       }
     }
   `);
 
   const nav = useNavigate();
+  const loc = useLocation();
+  const user = useContext(UserContext);
   const loggingOut = useSignal(false);
 
   const logout = $(async () => {
@@ -110,42 +128,58 @@ export const Navbar = component$<NavbarProps>((props) => {
     await nav("/login");
   });
 
+  // Switch at once, then save. Put it back if saving fails.
+  const setCalendar = $(async (calendar: Calendar) => {
+    const before = user.value;
+    if (!before || before.calendar === calendar) return;
+    user.value = { ...before, calendar };
+    const res = await api.put<User>("/settings", { calendar });
+    const token = getToken();
+    if (res.ok && token) {
+      saveAuth(token, res.data);
+      user.value = res.data;
+    } else if (!res.ok) {
+      user.value = before;
+    }
+  });
+
   return (
     <header>
       <div class="bar">
         <Logo />
 
-        <div class="search" role="search">
-          <label for="search" class="visually-hidden">
-            Search expenses
-          </label>
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--muted)"
-            stroke-width="2"
-            stroke-linecap="round"
-            aria-hidden="true"
-          >
-            <circle cx="11" cy="11" r="7" />
-            <path d="M20 20l-3.5-3.5" />
-          </svg>
-          <input
-            id="search"
-            type="search"
-            placeholder="Search by title or note"
-            bind:value={props.search}
-          />
-        </div>
+        <nav aria-label="Main">
+          {TABS.map((tab) => (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              aria-current={
+                loc.url.pathname.startsWith(tab.href) ? "page" : undefined
+              }
+            >
+              {tab.label}
+            </Link>
+          ))}
+        </nav>
 
-        {props.user && (
+        {user.value && (
           <div class="right">
+            <div class="calendar" role="group" aria-label="Date format">
+              {CALENDARS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={user.value?.calendar === option.value}
+                  onClick$={() => setCalendar(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
             <span class="avatar" aria-hidden="true">
-              {initials(props.user.name)}
+              {initials(user.value.name)}
             </span>
-            <span class="visually-hidden">Logged in as {props.user.name}</span>
+            <span class="visually-hidden">Logged in as {user.value.name}</span>
             <button
               type="button"
               class="btn-secondary logout"

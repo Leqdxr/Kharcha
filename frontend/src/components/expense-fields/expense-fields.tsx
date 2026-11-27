@@ -1,6 +1,13 @@
-import { component$, useStylesScoped$ } from "@builder.io/qwik";
+import { component$, useContext, useStylesScoped$ } from "@builder.io/qwik";
 import { FieldError } from "~/components/field/field";
-import { CATEGORIES, type ExpenseInput } from "~/lib/types";
+import { formatDate } from "~/lib/format";
+import {
+  CATEGORIES,
+  PAYMENT_LABELS,
+  type ExpenseInput,
+  type PaymentMethod,
+} from "~/lib/types";
+import { UserContext } from "~/lib/user-context";
 
 type ExpenseFieldsProps = {
   // Prefix for input ids, so the add form and the edit modal don't clash
@@ -11,7 +18,8 @@ type ExpenseFieldsProps = {
   compact?: boolean;
 };
 
-// Title, Amount + Date, Category buttons, Note. Used by the add form and the edit modal.
+// Title, Amount + Date, Category, Paid with, Note and Repeat every month.
+// Used by the add form and the edit modal.
 export const ExpenseFields = component$<ExpenseFieldsProps>((props) => {
   useStylesScoped$(`
     .fields {
@@ -90,9 +98,91 @@ export const ExpenseFields = component$<ExpenseFieldsProps>((props) => {
       font-weight: 400;
       color: var(--muted);
     }
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .methods {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .methods button {
+      height: 36px;
+      padding: 0 12px;
+      border: 1px solid var(--input-border);
+      border-radius: 18px;
+      background: var(--white);
+      color: var(--ink);
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .methods button:hover {
+      background: var(--surface);
+    }
+    .methods button[aria-pressed="true"] {
+      border-color: var(--red);
+      background: var(--red-tint);
+      color: var(--red-dark);
+      font-weight: 600;
+    }
+    .repeat {
+      width: 100%;
+      border: 0;
+      color: var(--ink);
+      text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 44px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: var(--surface);
+      cursor: pointer;
+    }
+    .repeat-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 14px;
+    }
+    .switch {
+      flex: none;
+      position: relative;
+      width: 44px;
+      height: 26px;
+      border-radius: 13px;
+      background: #c9c3bc;
+    }
+    .repeat[aria-checked="true"] .switch {
+      background: var(--red);
+    }
+    .switch::after {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      background: var(--white);
+      transition: left 0.15s;
+    }
+    .repeat[aria-checked="true"] .switch::after {
+      left: 21px;
+    }
   `);
 
   const { idPrefix, values, errors } = props;
+  const user = useContext(UserContext);
+  const calendar = user.value?.calendar ?? "bs";
+
+  // The methods turned on in settings, plus the expense's own if it was turned off since.
+  const methods: PaymentMethod[] = [...(user.value?.payment_methods ?? [])];
+  if (values.payment_method && !methods.includes(values.payment_method)) {
+    methods.push(values.payment_method);
+  }
 
   const errorProps = (field: string) =>
     errors[field]
@@ -152,6 +242,9 @@ export const ExpenseFields = component$<ExpenseFieldsProps>((props) => {
             onInput$={(_, el) => (values.date = el.value)}
             {...errorProps("date")}
           />
+          {calendar === "bs" && values.date && (
+            <span class="hint">{formatDate(values.date, "bs")}</span>
+          )}
           <FieldError id={`${idPrefix}-date-error`} message={errors.date} />
         </div>
       </div>
@@ -176,6 +269,34 @@ export const ExpenseFields = component$<ExpenseFieldsProps>((props) => {
         />
       </fieldset>
 
+      {methods.length > 0 && (
+        <fieldset {...errorProps("payment_method")}>
+          <legend class="label">
+            Paid with <span class="optional">(optional)</span>
+          </legend>
+          <div class="methods">
+            {methods.map((method) => (
+              <button
+                key={method}
+                type="button"
+                aria-pressed={values.payment_method === method}
+                onClick$={() =>
+                  // Pressing the selected one again clears it.
+                  (values.payment_method =
+                    values.payment_method === method ? null : method)
+                }
+              >
+                {PAYMENT_LABELS[method]}
+              </button>
+            ))}
+          </div>
+          <FieldError
+            id={`${idPrefix}-payment_method-error`}
+            message={errors.payment_method}
+          />
+        </fieldset>
+      )}
+
       <div class="field">
         <label class="label" for={`${idPrefix}-note`}>
           Note <span class="optional">(optional)</span>
@@ -192,6 +313,24 @@ export const ExpenseFields = component$<ExpenseFieldsProps>((props) => {
         />
         <FieldError id={`${idPrefix}-note-error`} message={errors.note} />
       </div>
+
+      <button
+        type="button"
+        role="switch"
+        class="repeat"
+        aria-checked={values.repeat}
+        onClick$={() => (values.repeat = !values.repeat)}
+      >
+        <span class="repeat-text">
+          <strong>Repeat every month</strong>
+          <span class="hint">
+            {values.repeat
+              ? `On day ${Number(values.date.slice(8)) || "–"} of each month`
+              : "Off"}
+          </span>
+        </span>
+        <span class="switch" aria-hidden="true" />
+      </button>
     </div>
   );
 });
