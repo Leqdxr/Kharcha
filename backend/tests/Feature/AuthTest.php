@@ -82,4 +82,9 @@ class AuthTest extends TestCase
         $this->getJson('/api/summary')->assertUnauthorized();
         $this->putJson('/api/budget', ['monthly_budget' => 100])->assertUnauthorized();
     }
+
+    public function test_guest_gets_401_even_without_json_accept_header(): void
+    {
+        $this->get('/api/user')->assertUnauthorized()->assertJsonPath('message', 'Unauthenticated.');
+    }
 }
