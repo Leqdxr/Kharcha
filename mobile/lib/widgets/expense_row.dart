@@ -6,7 +6,8 @@ import '../format.dart';
 import '../models/expense.dart';
 import '../theme.dart';
 
-/// One expense in the day-grouped list: icon, title, "Food · note", amount.
+/// One expense in the day-grouped list: icon, title, "Food · eSewa · note",
+/// amount.
 /// Tap to edit, swipe left to delete. [confirmDelete] asks first; [onDelete]
 /// runs only when the user confirms.
 class ExpenseRow extends StatelessWidget {
@@ -26,10 +27,14 @@ class ExpenseRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final amount = formatMoney(expense.amount);
-    final note = expense.note;
-    final sub = note == null || note.isEmpty
-        ? expense.category
-        : '${expense.category} · $note';
+    // "Food · eSewa · Repeats monthly · note"
+    final sub = [
+      expense.category,
+      if (expense.paymentMethod != null)
+        paymentMethodLabels[expense.paymentMethod] ?? expense.paymentMethod!,
+      if (expense.recurringExpenseId != null) 'Repeats monthly',
+      if (expense.note?.isNotEmpty ?? false) expense.note!,
+    ].join(' · ');
 
     return Dismissible(
       key: ValueKey(expense.id),

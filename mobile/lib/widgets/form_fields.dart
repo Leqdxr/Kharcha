@@ -41,6 +41,7 @@ class LabeledTextField extends StatefulWidget {
     this.autofillHints,
     this.textCapitalization = TextCapitalization.none,
     this.onSubmitted,
+    this.onChanged,
     this.prefixText,
     this.numberInput = false,
     this.inputFormatters,
@@ -58,6 +59,7 @@ class LabeledTextField extends StatefulWidget {
   final Iterable<String>? autofillHints;
   final TextCapitalization textCapitalization;
   final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
   final String? prefixText;
 
   /// Use equal-width digits for the typed text, e.g. for amounts.
@@ -96,6 +98,7 @@ class _LabeledTextFieldState extends State<LabeledTextField> {
           textCapitalization: widget.textCapitalization,
           autofillHints: widget.autofillHints,
           onSubmitted: widget.onSubmitted,
+          onChanged: widget.onChanged,
           inputFormatters: widget.inputFormatters,
           maxLines: widget.maxLines,
           maxLength: widget.maxLength,

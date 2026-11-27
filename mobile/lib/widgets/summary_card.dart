@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../format.dart';
 import '../models/summary.dart';
+import '../services/session.dart';
 import '../theme.dart';
 
 /// The red card: "Spent in November", the total, the comparison with last
@@ -49,7 +50,17 @@ class SummaryCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Spent in ${formatMonthName(month)}', style: small),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Spent in ${formatMonthName(month)}', style: small),
+                if (calendar == 'bs')
+                  Text(
+                    bsMonthRange(month),
+                    style: small.copyWith(fontSize: 12),
+                  ),
+              ],
+            ),
             const SizedBox(height: 6),
             FittedBox(
               fit: BoxFit.scaleDown,
@@ -115,8 +126,8 @@ class SummaryCard extends StatelessWidget {
     final used = budget > 0 ? total / budget : (total > 0 ? 1.0 : 0.0);
     final usedPct = (used * 100).round();
     final note = left >= 0
-        ? '$usedPct% of ${formatMoney(budget)} budget · ${formatMoney(left)} left'
-        : '${formatMoney(-left)} over budget';
+        ? '$usedPct% of ${formatMoney(budget)} · ${formatMoney(left)} left'
+        : 'Over budget by ${formatMoney(-left)}';
 
     return Semantics(
       button: true,

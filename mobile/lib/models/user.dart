@@ -1,9 +1,14 @@
+import 'expense.dart';
+
 class User {
   const User({
     required this.id,
     required this.name,
     required this.email,
     this.monthlyBudget,
+    this.calendar = 'bs',
+    this.ssfContributor = false,
+    this.paymentMethods = paymentMethodKeys,
   });
 
   final int id;
@@ -13,12 +18,27 @@ class User {
   /// Rupees per month, or null when no budget is set.
   final int? monthlyBudget;
 
+  /// How dates are shown: 'bs' (Bikram Sambat) or 'ad'.
+  final String calendar;
+
+  /// SSF contributors don't pay the 1% Social Security Tax.
+  final bool ssfContributor;
+
+  /// The payment methods shown as chips when adding an expense.
+  final List<String> paymentMethods;
+
   factory User.fromJson(Map<String, dynamic> json) {
+    final methods = json['payment_methods'];
     return User(
       id: json['id'] as int,
       name: json['name'] as String,
       email: json['email'] as String,
       monthlyBudget: (json['monthly_budget'] as num?)?.toInt(),
+      calendar: json['calendar'] as String? ?? 'bs',
+      ssfContributor: json['ssf_contributor'] as bool? ?? false,
+      paymentMethods: methods is List
+          ? [for (final m in methods) '$m']
+          : paymentMethodKeys,
     );
   }
 
@@ -27,6 +47,9 @@ class User {
     'name': name,
     'email': email,
     'monthly_budget': monthlyBudget,
+    'calendar': calendar,
+    'ssf_contributor': ssfContributor,
+    'payment_methods': paymentMethods,
   };
 
   /// Up to two letters, e.g. "Aagaman Koirala" -> "AK".

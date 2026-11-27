@@ -203,7 +203,8 @@ class InsightsTab extends StatelessWidget {
                       ),
                       children: [
                         TextSpan(
-                          text: '· ${formatShortDate(expense.date)}',
+                          text:
+                              '· ${formatDate(expense.date, withYear: false)}',
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             color: AppColors.muted,

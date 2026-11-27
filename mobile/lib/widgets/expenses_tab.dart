@@ -6,8 +6,8 @@ import 'package:material_ui/material_ui.dart';
 
 import '../format.dart';
 import '../models/expense.dart';
+import '../models/goal.dart';
 import '../models/summary.dart';
-import '../models/user.dart';
 import '../theme.dart';
 import 'expense_row.dart';
 import 'logo.dart';
@@ -16,15 +16,17 @@ import 'summary_card.dart';
 
 const _filters = ['All', ...expenseCategories];
 
-/// The Expenses tab: logo and account menu, month switcher, the red total
-/// card, category chips and the list grouped by day.
+/// The Expenses tab: logo and settings gear, month switcher, the red total
+/// card, safe to spend today, upcoming bills, the first savings goal,
+/// category chips and the list grouped by day.
 class ExpensesTab extends StatefulWidget {
   const ExpensesTab({
     super.key,
-    required this.user,
     required this.month,
     required this.expenses,
     required this.summary,
+    required this.bills,
+    required this.goals,
     required this.onMonthChanged,
     required this.onRefresh,
     required this.onAdd,
@@ -32,15 +34,19 @@ class ExpensesTab extends StatefulWidget {
     required this.confirmDelete,
     required this.onDelete,
     required this.onEditBudget,
-    required this.onLogOut,
+    required this.onOpenSettings,
+    required this.onOpenGoals,
   });
 
-  final User? user;
   final DateTime month;
 
   /// The month's expenses, newest first.
   final List<Expense> expenses;
   final Summary summary;
+
+  /// Repeating bills, next one first.
+  final List<RecurringExpense> bills;
+  final List<Goal> goals;
   final ValueChanged<DateTime> onMonthChanged;
   final Future<void> Function() onRefresh;
   final VoidCallback onAdd;
@@ -48,7 +54,8 @@ class ExpensesTab extends StatefulWidget {
   final Future<bool> Function(Expense) confirmDelete;
   final ValueChanged<Expense> onDelete;
   final VoidCallback onEditBudget;
-  final VoidCallback onLogOut;
+  final VoidCallback onOpenSettings;
+  final VoidCallback onOpenGoals;
 
   @override
   State<ExpensesTab> createState() => _ExpensesTabState();
@@ -62,6 +69,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
     // Keep the content readable on wide screens (landscape, tablets).
     final width = MediaQuery.sizeOf(context).width;
     final side = math.max(20.0, (width - 720) / 2);
+    final total = widget.expenses.fold(0.0, (sum, e) => sum + e.amount);
 
     return Column(
       children: [
@@ -69,7 +77,15 @@ class _ExpensesTabState extends State<ExpensesTab> {
           padding: EdgeInsets.fromLTRB(side, 12, side - 8, 0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [const Logo(size: 28), _accountMenu()],
+            children: [
+              const Logo(size: 28),
+              IconButton(
+                tooltip: 'Settings',
+                icon: const Icon(Icons.settings_outlined),
+                color: AppColors.inkSoft,
+                onPressed: widget.onOpenSettings,
+              ),
+            ],
           ),
         ),
         Padding(
@@ -91,10 +107,20 @@ class _ExpensesTabState extends State<ExpensesTab> {
                   padding: EdgeInsets.symmetric(horizontal: side),
                   child: SummaryCard(
                     month: widget.month,
-                    total: widget.expenses.fold(0, (sum, e) => sum + e.amount),
+                    total: total,
                     summary: widget.summary,
                     onEditBudget: widget.onEditBudget,
                   ),
+                ),
+                if (_safeToSpend(total) case final card?)
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(side, 14, side, 0),
+                    child: card,
+                  ),
+                if (widget.bills.isNotEmpty) ..._upcomingBills(side),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(side, 14, side, 0),
+                  child: _goalCard(),
                 ),
                 if (widget.expenses.isEmpty)
                   Padding(
@@ -222,66 +248,212 @@ class _ExpensesTabState extends State<ExpensesTab> {
     );
   }
 
-  Widget _accountMenu() {
-    final user = widget.user;
-    return PopupMenuButton<String>(
-      tooltip: user == null ? 'Account menu' : 'Account menu for ${user.name}',
-      position: PopupMenuPosition.under,
-      color: AppColors.white,
-      surfaceTintColor: Colors.transparent,
-      onSelected: (value) {
-        if (value == 'logout') widget.onLogOut();
-      },
-      itemBuilder: (context) => [
-        if (user != null)
-          PopupMenuItem<String>(
-            enabled: false,
+  /// (Budget left) / (days left including today). Only for the current
+  /// month with a budget; over budget it says by how much instead.
+  Widget? _safeToSpend(double total) {
+    final budget = widget.summary.budget;
+    final daysLeft = widget.summary.daysLeft;
+    if (budget == null || daysLeft == null || daysLeft < 1) return null;
+    final left = budget - total;
+    final over = left < 0;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.line),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.redTint,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              over ? Icons.warning_amber_rounded : Icons.savings_outlined,
+              color: AppColors.red,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user.name,
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.ink,
-                  ),
-                ),
-                Text(
-                  user.email,
+                  over ? 'Over budget by' : 'Safe to spend today',
                   style: GoogleFonts.inter(
                     fontSize: 13,
                     color: AppColors.muted,
                   ),
                 ),
+                Text(
+                  formatMoney(over ? -left : (left / daysLeft).round()),
+                  style: AppText.number(size: 22, weight: FontWeight.w600),
+                ),
               ],
             ),
           ),
-        if (user != null) const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'logout',
-          child: Row(
-            children: [
-              Icon(Icons.logout, size: 20, color: AppColors.ink),
-              SizedBox(width: 12),
-              Text('Log out'),
-            ],
+          Text(
+            '$daysLeft ${daysLeft == 1 ? 'day' : 'days'} left\nthis month',
+            textAlign: TextAlign.right,
+            style: GoogleFonts.inter(fontSize: 13, color: AppColors.muted),
           ),
-        ),
-      ],
-      child: SizedBox.square(
-        dimension: 48,
-        child: Center(
-          child: CircleAvatar(
-            radius: 22,
-            backgroundColor: AppColors.redTint,
-            child: Text(
-              user?.initials ?? '',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.redDark,
+        ],
+      ),
+    );
+  }
+
+  /// The next three repeating bills, with the date and "in N days".
+  List<Widget> _upcomingBills(double side) {
+    final small = GoogleFonts.inter(fontSize: 12, color: AppColors.muted);
+    return [
+      Padding(
+        padding: EdgeInsets.fromLTRB(side, 18, side, 8),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Semantics(
+              header: true,
+              child: Text(
+                'Upcoming bills',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
+            Text(
+              'Repeat every month',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.muted),
+            ),
+          ],
+        ),
+      ),
+      SizedBox(
+        height: 92,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: side),
+          itemCount: math.min(3, widget.bills.length),
+          separatorBuilder: (_, _) => const SizedBox(width: 10),
+          itemBuilder: (context, i) {
+            final bill = widget.bills[i];
+            final days = daysUntil(bill.nextDate);
+            final when = switch (days) {
+              <= 0 => 'today',
+              1 => 'tomorrow',
+              _ => 'in $days days',
+            };
+            return Container(
+              width: 150,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    bill.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    formatMoney(bill.amount),
+                    style: AppText.number(size: 16, weight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${formatDate(bill.nextDate, withYear: false)} · $when',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: small,
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    ];
+  }
+
+  /// The first goal's progress, or a link to start one. Opens Goals.
+  Widget _goalCard() {
+    final goal = widget.goals.firstOrNull;
+    return Material(
+      color: AppColors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.line),
+      ),
+      child: InkWell(
+        onTap: widget.onOpenGoals,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: goal == null
+                    ? Text(
+                        'Start a savings goal',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  goal.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${goal.percent}%',
+                                style: AppText.number(
+                                  size: 14,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: goal.percent / 100,
+                              minHeight: 6,
+                              backgroundColor: AppColors.surface,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right, color: AppColors.muted),
+            ],
           ),
         ),
       ),

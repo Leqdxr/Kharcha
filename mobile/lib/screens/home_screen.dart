@@ -3,22 +3,28 @@ import 'package:material_ui/material_ui.dart';
 
 import '../format.dart';
 import '../models/expense.dart';
+import '../models/goal.dart';
 import '../models/summary.dart';
 import '../models/user.dart';
 import '../services/api.dart';
 import '../services/auth_storage.dart';
+import '../services/session.dart';
 import '../theme.dart';
 import '../widgets/budget_dialog.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/expense_form.dart';
 import '../widgets/expenses_tab.dart';
 import '../widgets/insights_tab.dart';
-import 'login_screen.dart';
+import '../widgets/tax_tab.dart';
+import '../widgets/udharo_tab.dart';
+import 'goals_screen.dart';
+import 'settings_screen.dart';
 
 enum _Status { loading, ready, error }
 
-/// The logged-in app: Expenses and Insights tabs for one month, with a
-/// bottom bar and a red + button. Holds the month's data for both tabs.
+/// The logged-in app: Expenses, Insights, Udharo and Tax tabs with a bottom
+/// bar and a red + button that adds the tab's own thing. Holds the month's
+/// data for the Expenses and Insights tabs.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -27,21 +33,43 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  User? _user;
   DateTime _month = thisMonth();
   List<Expense> _expenses = [];
   Summary? _summary;
+  List<RecurringExpense> _bills = [];
+  List<Goal> _goals = [];
   _Status _status = _Status.loading;
   String _errorMessage = '';
   int _tab = 0;
+  final _udharoTab = GlobalKey<UdharoTabState>();
+  final _taxTab = GlobalKey<TaxTabState>();
 
   @override
   void initState() {
     super.initState();
-    AuthStorage.getUser().then((user) {
-      if (mounted) setState(() => _user = user);
-    });
+    // Dates follow the calendar setting, so redraw when the user changes.
+    currentUser.addListener(_onUserChanged);
+    _loadUser();
     _load();
+  }
+
+  @override
+  void dispose() {
+    currentUser.removeListener(_onUserChanged);
+    super.dispose();
+  }
+
+  void _onUserChanged() => setState(() {});
+
+  /// The saved copy first, then the latest settings from the API.
+  Future<void> _loadUser() async {
+    final saved = await AuthStorage.getUser();
+    if (saved != null) currentUser.value = saved;
+    if (await Api.get('/user') case ApiSuccess(
+      data: final Map<String, dynamic> json,
+    )) {
+      await setCurrentUser(User.fromJson(json));
+    }
   }
 
   /// Loads the month's expenses and summary. With [refresh] (pull to
@@ -51,9 +79,11 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!refresh) setState(() => _status = _Status.loading);
 
     final month = monthKey(_month);
-    final [list, summary] = await Future.wait([
+    final [list, summary, bills, goals] = await Future.wait([
       Api.get('/expenses?month=$month'),
       Api.get('/summary?month=$month'),
+      Api.get('/recurring-expenses'),
+      Api.get('/goals'),
     ]);
     if (!mounted) return;
 
@@ -64,6 +94,18 @@ class _HomeScreenState extends State<HomeScreen> {
             for (final e in data) Expense.fromJson(e as Map<String, dynamic>),
           ];
           _summary = Summary.fromJson(json);
+          // Bills and goals are extras: keep the old ones if they fail.
+          if (bills case ApiSuccess(data: final List rows)) {
+            _bills = [
+              for (final r in rows)
+                RecurringExpense.fromJson(r as Map<String, dynamic>),
+            ];
+          }
+          if (goals case ApiSuccess(data: final List rows)) {
+            _goals = [
+              for (final g in rows) Goal.fromJson(g as Map<String, dynamic>),
+            ];
+          }
           _status = _Status.ready;
         });
         return;
@@ -89,15 +131,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _load();
   }
 
-  Future<void> _logOut() async {
-    // Tell the backend to drop the token, but log out locally either way.
-    await Api.post('/logout');
-    await AuthStorage.clear();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
+  Future<void> _openSettings() async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
+    // The budget or goals may have changed there.
+    if (mounted) _load(refresh: true);
+  }
+
+  Future<void> _openGoals() async {
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const GoalsScreen()));
+    if (mounted) _load(refresh: true);
   }
 
   Future<void> _addExpense() async {
@@ -107,6 +151,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // Added to another month: show that month.
     if (!expense.date.startsWith(monthKey(_month))) {
       _changeMonth(parseMonth(expense.date.substring(0, 7)));
+    } else if (result.repeatChanged) {
+      // A new repeat may have added bills for this and earlier months.
+      _load(refresh: true);
     } else {
       setState(() => _expenses = sortExpenses([..._expenses, expense]));
     }
@@ -117,6 +164,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final result = await showExpenseForm(context, expense: expense);
     if (!mounted) return;
     switch (result) {
+      case ExpenseSaved(repeatChanged: true):
+        _load(refresh: true);
+        _showSnackBar('Expense updated');
       case ExpenseSaved(expense: final saved):
         final others = _expenses.where((e) => e.id != saved.id);
         setState(() {
@@ -165,14 +215,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (user == null || !mounted) return;
     final summary = _summary!;
     setState(() {
-      _user = user;
       _summary = Summary(
         previousMonth: summary.previousMonth,
         previousTotal: summary.previousTotal,
         budget: user.monthlyBudget,
+        daysLeft: summary.daysLeft,
       );
     });
-    await AuthStorage.saveUser(user);
+    await setCurrentUser(user);
   }
 
   void _showSnackBar(String message) {
@@ -185,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final ready = _status == _Status.ready;
     return Scaffold(
-      floatingActionButton: ready && _tab == 0 ? _addButton() : null,
+      floatingActionButton: ready || _tab >= 2 ? _addButton() : null,
       bottomNavigationBar: _BottomBar(
         index: _tab,
         onChanged: (i) => setState(() => _tab = i),
@@ -193,13 +243,17 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         bottom: false,
         child: switch (_status) {
+          // Udharo and Tax load their own data.
+          _ when _tab == 2 => UdharoTab(key: _udharoTab),
+          _ when _tab == 3 => TaxTab(key: _taxTab),
           _Status.loading => const Center(child: CircularProgressIndicator()),
           _Status.error => _errorState(),
           _Status.ready when _tab == 0 => ExpensesTab(
-            user: _user,
             month: _month,
             expenses: _expenses,
             summary: _summary!,
+            bills: _bills,
+            goals: _goals,
             onMonthChanged: _changeMonth,
             onRefresh: () => _load(refresh: true),
             onAdd: _addExpense,
@@ -207,7 +261,8 @@ class _HomeScreenState extends State<HomeScreen> {
             confirmDelete: _confirmDelete,
             onDelete: _deleteExpense,
             onEditBudget: _editBudget,
-            onLogOut: _logOut,
+            onOpenSettings: _openSettings,
+            onOpenGoals: _openGoals,
           ),
           _Status.ready => InsightsTab(
             month: _month,
@@ -221,14 +276,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Adds an expense, an udharo or an income, to fit the tab.
   Widget _addButton() {
+    final (tooltip, onPressed) = switch (_tab) {
+      2 => ('Add udharo', () => _udharoTab.currentState?.add()),
+      3 => ('Add income', () => _taxTab.currentState?.add()),
+      _ => ('Add expense', _addExpense),
+    };
     return SizedBox.square(
       dimension: 60,
       child: FloatingActionButton(
-        tooltip: 'Add expense',
+        tooltip: tooltip,
         shape: const CircleBorder(),
         elevation: 6,
-        onPressed: _addExpense,
+        onPressed: onPressed,
         child: const Icon(Icons.add, size: 28),
       ),
     );
@@ -265,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Expenses / Insights, the active one in red.
+/// Expenses / Insights / Udharo / Tax, the active one in red.
 class _BottomBar extends StatelessWidget {
   const _BottomBar({required this.index, required this.onChanged});
 
@@ -275,6 +336,8 @@ class _BottomBar extends StatelessWidget {
   static const _items = [
     (icon: Icons.receipt_long, label: 'Expenses'),
     (icon: Icons.bar_chart, label: 'Insights'),
+    (icon: Icons.handshake_outlined, label: 'Udharo'),
+    (icon: Icons.request_quote_outlined, label: 'Tax'),
   ];
 
   @override
