@@ -8,6 +8,7 @@ class User {
     this.monthlyBudget,
     this.calendar = 'bs',
     this.ssfContributor = false,
+    this.fiscalYearView = true,
     this.paymentMethods = paymentMethodKeys,
   });
 
@@ -24,6 +25,10 @@ class User {
   /// SSF contributors don't pay the 1% Social Security Tax.
   final bool ssfContributor;
 
+  /// On: the Tax tab lists the Nepali fiscal year (Shrawan to Asar).
+  /// Off: the calendar year. The estimate always uses the fiscal year.
+  final bool fiscalYearView;
+
   /// The payment methods shown as chips when adding an expense.
   final List<String> paymentMethods;
 
@@ -36,6 +41,7 @@ class User {
       monthlyBudget: (json['monthly_budget'] as num?)?.toInt(),
       calendar: json['calendar'] as String? ?? 'bs',
       ssfContributor: json['ssf_contributor'] as bool? ?? false,
+      fiscalYearView: json['fiscal_year_view'] as bool? ?? true,
       paymentMethods: methods is List
           ? [for (final m in methods) '$m']
           : paymentMethodKeys,
@@ -49,6 +55,7 @@ class User {
     'monthly_budget': monthlyBudget,
     'calendar': calendar,
     'ssf_contributor': ssfContributor,
+    'fiscal_year_view': fiscalYearView,
     'payment_methods': paymentMethods,
   };
 

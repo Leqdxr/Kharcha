@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import '../format.dart';
 import '../models/income.dart';
 import '../services/api.dart';
+import '../services/session.dart';
 import '../theme.dart';
 import 'confirm_dialog.dart';
 import 'income_form.dart';
@@ -23,8 +24,33 @@ class TaxTab extends StatefulWidget {
 
 class TaxTabState extends State<TaxTab> {
   TaxSummary? _summary;
-  List<Income> _incomes = [];
+
+  /// Every income; [_incomes] is the ones in the chosen year.
+  List<Income> _all = [];
   String? _error;
+
+  bool get _fiscalYearView => currentUser.value?.fiscalYearView ?? true;
+
+  /// First and last day of the listed year: the fiscal year, or this
+  /// calendar year when the fiscal year view is off in Settings.
+  (String, String) _period(TaxSummary summary) {
+    if (_fiscalYearView) {
+      return (summary.fiscalYearStart, summary.fiscalYearEnd);
+    }
+    final year = DateTime.now().year;
+    return ('$year-01-01', '$year-12-31');
+  }
+
+  List<Income> get _incomes {
+    final summary = _summary;
+    if (summary == null) return [];
+    final (start, end) = _period(summary);
+    return _all
+        .where(
+          (i) => i.date.compareTo(start) >= 0 && i.date.compareTo(end) <= 0,
+        )
+        .toList();
+  }
 
   /// Ids of the ticked incomes. Holding a row starts selecting.
   Set<int> _selected = {};
@@ -56,9 +82,9 @@ class TaxTabState extends State<TaxTab> {
         setState(() {
           _summary = data;
           _error = null;
-          _incomes = [
+          _all = [
             for (final r in rows) Income.fromJson(r as Map<String, dynamic>),
-          ].where((i) => _inFiscalYear(i, data)).toList();
+          ];
           // Forget ticks for incomes that are gone.
           _selected = _selected.intersection({for (final i in _incomes) i.id});
         });
@@ -68,10 +94,6 @@ class TaxTabState extends State<TaxTab> {
     final error = [summary, list].whereType<ApiFailure>().firstOrNull?.error;
     setState(() => _error = error?.message ?? 'Something went wrong.');
   }
-
-  bool _inFiscalYear(Income income, TaxSummary summary) =>
-      income.date.compareTo(summary.fiscalYearStart) >= 0 &&
-      income.date.compareTo(summary.fiscalYearEnd) <= 0;
 
   /// The + button on this tab.
   Future<void> add() async {
@@ -90,7 +112,7 @@ class TaxTabState extends State<TaxTab> {
   Future<void> _delete(List<Income> chosen) async {
     final ids = {for (final i in chosen) i.id};
     setState(() {
-      _incomes = _incomes.where((i) => !ids.contains(i.id)).toList();
+      _all = _all.where((i) => !ids.contains(i.id)).toList();
       _selected = {};
     });
     var failed = 0;
@@ -235,7 +257,9 @@ class TaxTabState extends State<TaxTab> {
               Semantics(
                 header: true,
                 child: Text(
-                  'Income so far',
+                  _fiscalYearView
+                      ? 'Income so far'
+                      : 'Income in ${DateTime.now().year}',
                   style: GoogleFonts.inter(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -249,11 +273,16 @@ class TaxTabState extends State<TaxTab> {
             ],
           ),
           const SizedBox(height: 4),
+          if (!_fiscalYearView)
+            Text(
+              'Listing January to December. The estimate above always uses FY ${summary.fiscalYearLabel}.',
+              style: GoogleFonts.inter(fontSize: 13, color: AppColors.muted),
+            ),
           if (_incomes.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                'No income yet this fiscal year. Tap + to add your salary or a payment.',
+                'No income yet this ${_fiscalYearView ? 'fiscal ' : ''}year. Tap + to add your salary or a payment.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(color: AppColors.muted),
               ),

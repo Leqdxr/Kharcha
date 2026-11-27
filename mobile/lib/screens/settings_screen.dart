@@ -137,14 +137,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: AppColors.muted,
                   ),
                 ),
-                // The tax year always runs Shrawan to Asar; this is shown so
-                // people know, not changed.
+                // Which year the Tax tab lists. The estimate always uses the
+                // fiscal year.
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: _title('Nepali fiscal year'),
-                  subtitle: _subtitle('Yearly totals run Shrawan to Asar'),
-                  value: true,
-                  onChanged: null,
+                  subtitle: _subtitle(
+                    user.fiscalYearView
+                        ? 'Tax tab lists Shrawan to Asar'
+                        : 'Tax tab lists January to December',
+                  ),
+                  value: user.fiscalYearView,
+                  activeThumbColor: AppColors.white,
+                  activeTrackColor: AppColors.red,
+                  onChanged: (on) => _save({'fiscal_year_view': on}),
                 ),
                 _heading('Money'),
                 _linkRow(
