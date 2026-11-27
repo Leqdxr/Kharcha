@@ -42,6 +42,24 @@ class ExpenseTest extends TestCase
         $this->assertDatabaseHas('expenses', ['user_id' => $user->id, 'title' => 'Bus', 'note' => 'To college']);
     }
 
+    public function test_created_expense_has_every_field(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $response = $this->postJson('/api/expenses', [
+            'title' => 'Tea',
+            'amount' => 25,
+            'category' => 'Food',
+            'date' => '2026-11-27',
+        ])->assertCreated();
+
+        // Missing keys made new rows look like monthly repeats on the web.
+        foreach (['note', 'payment_method', 'recurring_expense_id'] as $field) {
+            $this->assertArrayHasKey($field, $response->json());
+            $this->assertNull($response->json($field));
+        }
+    }
+
     public function test_note_is_optional(): void
     {
         Sanctum::actingAs(User::factory()->create());

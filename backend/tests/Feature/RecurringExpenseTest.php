@@ -132,4 +132,35 @@ class RecurringExpenseTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors('expense_id');
     }
+
+    public function test_deleting_the_last_expense_of_a_repeat_stops_it(): void
+    {
+        $this->travelTo('2026-11-27 09:00:00');
+        $user = User::factory()->create();
+        $expense = $this->expenseFor($user, '2026-11-20');
+        Sanctum::actingAs($user);
+        $this->postJson('/api/recurring-expenses', ['expense_id' => $expense->id])->assertCreated();
+
+        $this->deleteJson("/api/expenses/{$expense->id}")->assertNoContent();
+
+        $this->getJson('/api/recurring-expenses')->assertJsonCount(0);
+    }
+
+    public function test_deleting_one_month_keeps_the_repeat_while_others_remain(): void
+    {
+        $this->travelTo('2026-11-27 09:00:00');
+        $user = User::factory()->create();
+        $first = $this->expenseFor($user, '2026-10-05');
+        Sanctum::actingAs($user);
+        $this->postJson('/api/recurring-expenses', ['expense_id' => $first->id])->assertCreated();
+        $this->assertSame(2, $user->expenses()->count());
+
+        $this->deleteJson("/api/expenses/{$first->id}")->assertNoContent();
+
+        $this->getJson('/api/recurring-expenses')->assertJsonCount(1);
+
+        $this->deleteJson('/api/expenses/'.$user->expenses()->first()->id)->assertNoContent();
+
+        $this->getJson('/api/recurring-expenses')->assertJsonCount(0);
+    }
 }

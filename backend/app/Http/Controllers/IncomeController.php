@@ -24,7 +24,7 @@ class IncomeController extends Controller
     {
         $income = $request->user()->incomes()->create($this->validateIncome($request));
 
-        return response()->json($income, 201);
+        return response()->json($income->refresh(), 201);
     }
 
     public function update(Request $request, Income $income): JsonResponse

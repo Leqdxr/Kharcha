@@ -32,7 +32,8 @@ class ExpenseController extends Controller
     {
         $expense = $request->user()->expenses()->create($this->validateExpense($request));
 
-        return response()->json($expense, 201);
+        // Reload so every column is in the response (e.g. recurring_expense_id = null).
+        return response()->json($expense->refresh(), 201);
     }
 
     public function update(Request $request, Expense $expense): JsonResponse
@@ -49,6 +50,12 @@ class ExpenseController extends Controller
         $this->authorizeOwner($request, $expense);
 
         $expense->delete();
+
+        // Deleting the last expense of a monthly repeat stops the repeat too.
+        $rule = $expense->recurringExpense;
+        if ($rule && ! $rule->expenses()->exists()) {
+            $rule->delete();
+        }
 
         return response()->noContent();
     }
