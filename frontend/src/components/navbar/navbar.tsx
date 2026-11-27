@@ -13,10 +13,27 @@ import { initials } from "~/lib/format";
 import type { Calendar, User } from "~/lib/types";
 import { UserContext } from "~/lib/user-context";
 
+// Each tab has its own icon (24px viewBox line icons), so they read as
+// separate sections at a glance.
 const TABS = [
-  { href: "/expenses/", label: "Expenses" },
-  { href: "/tax/", label: "Tax & TDS" },
-  { href: "/udharo/", label: "Udharo" },
+  {
+    href: "/expenses/",
+    label: "Expenses",
+    // Receipt
+    icon: "M6 3h12v18l-3-2-3 2-3-2-3 2V3zM9 8h6M9 12h6M9 16h3",
+  },
+  {
+    href: "/tax/",
+    label: "Tax & TDS",
+    // Percent sign in a document
+    icon: "M6 3h9l4 4v14H6V3zM15 3v4h4M9.5 17.5l6-7M10 11h.01M15 17h.01",
+  },
+  {
+    href: "/udharo/",
+    label: "Udharo",
+    // Arrows going both ways: lent and borrowed
+    icon: "M4 8h14l-3-3M20 16H6l3 3",
+  },
 ];
 
 const CALENDARS: { value: Calendar; label: string }[] = [
@@ -41,25 +58,53 @@ export const Navbar = component$(() => {
     }
     nav {
       display: flex;
-      flex-wrap: wrap;
       gap: 4px;
+      padding: 4px;
+      border-radius: 12px;
+      background: var(--surface);
     }
-    nav a {
-      padding: 10px 14px;
+    /* The tabs are rendered by <Link>, which scoped styles don't reach
+       without :global(). */
+    nav :global(a) {
+      height: 40px;
+      padding: 0 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       border-radius: 8px;
-      color: #3d3835;
+      color: var(--muted);
       text-decoration: none;
       font-size: 15px;
       font-weight: 500;
+      white-space: nowrap;
+      transition:
+        background 0.15s,
+        color 0.15s;
     }
-    nav a:hover {
-      background: var(--surface);
-      color: #3d3835;
+    nav :global(a:hover) {
+      background: #ece8e3;
+      color: var(--ink);
     }
-    nav a[aria-current="page"] {
-      background: var(--red-tint);
+    nav :global(a[aria-current="page"]) {
+      position: relative;
+      background: var(--white);
       color: var(--red-dark);
       font-weight: 600;
+      box-shadow: 0 1px 3px rgba(27, 25, 24, 0.12);
+    }
+    /* A short red bar under the active tab */
+    nav :global(a[aria-current="page"]::after) {
+      content: "";
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 4px;
+      height: 2px;
+      border-radius: 1px;
+      background: var(--red);
+    }
+    nav :global(a[aria-current="page"] svg) {
+      color: var(--red);
     }
     .right {
       display: flex;
@@ -112,6 +157,12 @@ export const Navbar = component$(() => {
         order: 1;
         flex-basis: 100%;
       }
+      nav :global(a) {
+        flex: 1;
+        justify-content: center;
+        padding: 0 8px;
+        font-size: 14px;
+      }
     }
   `);
 
@@ -157,6 +208,19 @@ export const Navbar = component$(() => {
                 loc.url.pathname.startsWith(tab.href) ? "page" : undefined
               }
             >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d={tab.icon} />
+              </svg>
               {tab.label}
             </Link>
           ))}
